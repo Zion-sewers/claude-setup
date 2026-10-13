@@ -25,6 +25,12 @@ python3 -m pytest tests/ -q
 
 The honest demo is the gate passing on its own repo: a dotfiles repo that audits itself.
 
+## How it works
+
+![control plane](docs/control-plane.svg)
+
+Skills declare, hooks enforce, personas review. Each sends its pulse into the central control plane, and the plane admits only what survives all three, emitting a checkmark. The animation loops the admission so the mechanism reads at a glance.
+
 ## What it does
 
 - 12-domain quality gate (`tools/gate/gate.py`) with per-oracle selftests.
