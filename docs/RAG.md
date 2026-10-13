@@ -49,6 +49,46 @@ open until credentials exist (Secure Vault path, never keys in the repo).
 Qdrant is the docs-RAG store by default: it is the only measured option, it is
 already live, and the eval above runs against it.
 
+## Corrective layer (Phase A, 2026-10-13: NEGATIVE RESULT)
+
+Plan: `~/workspace/company/research/corrective-rag-plan-2026-10-13.md`.
+Branch: `olga/corrective-rag-422` (PR open, not merged). The retry loop was
+not built: Phase A (grader alone) failed its gate, so per the plan the loop
+stays unwired.
+
+What was built: `tools/docs-rag/correct.py` (NLI grader, 108-pair dev set
+via `tools/docs-rag/build_dev_set.py`), contract tests in
+`tests/test_docs_rag.py` (21 pass).
+
+Dev set: 108 labeled (query, chunk) pairs, 50 relevant / 58 irrelevant,
+sampled from live top-10 retrieval. Labels are constructs: relevant =
+truth-doc chunk from a substance section (Scope, Non-goals, See-also and
+title-only chunks excluded by rule after a manual audit found 32% label
+noise without the filter). Quality note is in `dev_set.json`.
+
+Gate result: **FAIL**. Grader = `cross-encoder/nli-deberta-v3-base`
+(premise=chunk, hypothesis=question), 108 pairs:
+
+| threshold | precision | recall | flagged |
+|---|---|---|---|
+| 0.50 | 0.500 | 0.040 | 4 |
+| 0.75 | 0.667 | 0.040 | 3 |
+| 0.90 | 0.000 | 0.000 | 0 |
+
+No threshold reaches precision >= 0.9. Score means: relevant 0.047,
+irrelevant 0.034: no discrimination. Swapped formulation
+(premise=question, hypothesis=chunk) is worse: relevant mean 0.0046,
+below irrelevant mean 0.0128, zero flags at any threshold.
+
+Root cause: NLI models judge statement-to-statement entailment. A
+question is not a statement, so neither direction produces entailment
+signal on this corpus. The v1 grader choice in the plan was wrong.
+
+Next options (need Shoval's word): a passage-ranking cross-encoder
+(MS MARCO, the tool actually trained for query-passage relevance) or
+the OpenJev-style decision model from the approved Jev hybrid
+experiment. Neither was attempted here.
+
 <details><summary><strong>2026-08-30</strong> — 40 reports</summary>
 
 - [artifact extraction](specs/2026-08-30-corpus-artifact-extraction.md)
