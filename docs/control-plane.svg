@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" role="img" aria-label="claude-setup control plane: skills, hooks and personas feed pulses into a central control plane that emits a checkmark pulse outward">
+  <rect width="800" height="450" fill="#101210" rx="8"/>
+  <style>
+    text { font-family: "Space Grotesk", Inter, system-ui, sans-serif; }
+    .mono { font-family: "JetBrains Mono", ui-monospace, monospace; }
+    .pulse  { opacity: 0; }
+    .p1 { animation: t1 6s linear infinite; animation-delay: 0s; }
+    .p2 { animation: t2 6s linear infinite; animation-delay: .5s; }
+    .p3 { animation: t3 6s linear infinite; animation-delay: 1s; }
+    .halo { animation: halo 6s ease-in-out infinite; opacity: 0; }
+    .check { animation: check 6s ease-in-out infinite; stroke-dasharray: 75; stroke-dashoffset: 75; opacity: 0; }
+    .ring { animation: ring 6s ease-out infinite; opacity: 0; transform-box: fill-box; transform-origin: center; }
+    @keyframes t1 {
+      0%         { transform: translate(200px,148px); opacity: 0; }
+      5%, 25%   { opacity: 1; }
+      25%        { transform: translate(476px,196px); }
+      28%, 100% { transform: translate(476px,196px); opacity: 0; }
+    }
+    @keyframes t2 {
+      0%         { transform: translate(200px,243px); opacity: 0; }
+      5%, 25%   { opacity: 1; }
+      25%        { transform: translate(476px,225px); }
+      28%, 100% { transform: translate(476px,225px); opacity: 0; }
+    }
+    @keyframes t3 {
+      0%         { transform: translate(200px,338px); opacity: 0; }
+      5%, 25%   { opacity: 1; }
+      25%        { transform: translate(476px,254px); }
+      28%, 100% { transform: translate(476px,254px); opacity: 0; }
+    }
+    @keyframes halo {
+      0%, 30%  { opacity: 0; }
+      38%      { opacity: .85; }
+      50%, 100%{ opacity: 0; }
+    }
+    @keyframes check {
+      0%, 45%  { stroke-dashoffset: 75; opacity: 0; }
+      52%      { opacity: 1; }
+      62%, 85% { stroke-dashoffset: 0; opacity: 1; }
+      95%, 100%{ stroke-dashoffset: 0; opacity: 0; }
+    }
+    @keyframes ring {
+      0%, 48%  { transform: scale(.3); opacity: 0; }
+      55%      { opacity: .7; }
+      80%, 100%{ transform: scale(2.2); opacity: 0; }
+    }
+  </style>
+
+  <text x="40" y="44" fill="#D9A13B" font-size="20" font-weight="700">claude-setup</text>
+  <text x="40" y="68" fill="#F5F1E6" font-size="13" opacity=".85">the control plane admits only what survives all three</text>
+
+  <!-- edges -->
+  <g stroke="#5C6B5A" stroke-width="2">
+    <line x1="200" y1="148" x2="476" y2="196"/>
+    <line x1="200" y1="243" x2="476" y2="225"/>
+    <line x1="200" y1="338" x2="476" y2="254"/>
+  </g>
+  <polygon points="476,190 490,196 476,202" fill="#5C6B5A"/>
+  <polygon points="476,219 490,225 476,231" fill="#5C6B5A"/>
+  <polygon points="476,248 490,254 476,260" fill="#5C6B5A"/>
+  <g class="mono" fill="#5C6B5A" font-size="11">
+    <text x="300" y="158">declare</text>
+    <text x="300" y="232">enforce</text>
+    <text x="300" y="310">review</text>
+  </g>
+
+  <!-- source nodes -->
+  <g>
+    <rect x="60" y="120" width="140" height="56" rx="10" fill="#171917" stroke="#D9A13B" stroke-width="1.5"/>
+    <text x="130" y="154" fill="#F5F1E6" font-size="15" text-anchor="middle">skills</text>
+    <rect x="60" y="215" width="140" height="56" rx="10" fill="#171917" stroke="#D9A13B" stroke-width="1.5"/>
+    <text x="130" y="249" fill="#F5F1E6" font-size="15" text-anchor="middle">hooks</text>
+    <rect x="60" y="310" width="140" height="56" rx="10" fill="#171917" stroke="#D9A13B" stroke-width="1.5"/>
+    <text x="130" y="344" fill="#F5F1E6" font-size="15" text-anchor="middle">personas</text>
+  </g>
+
+  <!-- traveling pulses: translate along each edge -->
+  <g fill="#D9A13B">
+    <circle class="pulse p1" cx="0" cy="0" r="7"/>
+    <circle class="pulse p2" cx="0" cy="0" r="7"/>
+    <circle class="pulse p3" cx="0" cy="0" r="7"/>
+  </g>
+
+  <!-- central control plane -->
+  <rect x="480" y="165" width="200" height="120" rx="12" fill="#171917" stroke="#D9A13B" stroke-width="2"/>
+  <rect class="halo" x="472" y="157" width="216" height="136" rx="16" fill="none" stroke="#D9A13B" stroke-width="3"/>
+  <text x="580" y="218" fill="#F5F1E6" font-size="16" font-weight="700" text-anchor="middle">control plane</text>
+  <text x="580" y="242" fill="#5C6B5A" font-size="12" text-anchor="middle" class="mono">admit / reject</text>
+
+  <!-- emitted checkmark pulse -->
+  <circle class="ring" cx="580" cy="225" r="40" fill="none" stroke="#D9A13B" stroke-width="2"/>
+  <path class="check" d="M 556,225 L 572,241 L 606,205" fill="none" stroke="#D9A13B" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <text x="400" y="420" fill="#5C6B5A" font-size="12" text-anchor="middle" class="mono">skills declare · hooks enforce · personas review — admission needs all three</text>
+</svg>
