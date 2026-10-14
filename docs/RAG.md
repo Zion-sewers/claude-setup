@@ -49,6 +49,102 @@ open until credentials exist (Secure Vault path, never keys in the repo).
 Qdrant is the docs-RAG store by default: it is the only measured option, it is
 already live, and the eval above runs against it.
 
+## Corrective layer (Phase A, 2026-10-13: NEGATIVE RESULT)
+
+Plan: `~/workspace/company/research/corrective-rag-plan-2026-10-13.md`.
+Branch: `olga/corrective-rag-422` (PR open, not merged). The retry loop was
+not built: Phase A (grader alone) failed its gate, so per the plan the loop
+stays unwired.
+
+What was built: `tools/docs-rag/correct.py` (NLI grader, 108-pair dev set
+via `tools/docs-rag/build_dev_set.py`), contract tests in
+`tests/test_docs_rag.py` (21 pass).
+
+Dev set: 108 labeled (query, chunk) pairs, 50 relevant / 58 irrelevant,
+sampled from live top-10 retrieval. Labels are constructs: relevant =
+truth-doc chunk from a substance section (Scope, Non-goals, See-also and
+title-only chunks excluded by rule after a manual audit found 32% label
+noise without the filter). Quality note is in `dev_set.json`.
+
+Gate result: **FAIL**. Grader = `cross-encoder/nli-deberta-v3-base`
+(premise=chunk, hypothesis=question), 108 pairs:
+
+| threshold | precision | recall | flagged |
+|---|---|---|---|
+| 0.50 | 0.500 | 0.040 | 4 |
+| 0.75 | 0.667 | 0.040 | 3 |
+| 0.90 | 0.000 | 0.000 | 0 |
+
+No threshold reaches precision >= 0.9. Score means: relevant 0.047,
+irrelevant 0.034: no discrimination. Swapped formulation
+(premise=question, hypothesis=chunk) is worse: relevant mean 0.0046,
+below irrelevant mean 0.0128, zero flags at any threshold.
+
+Root cause: NLI models judge statement-to-statement entailment. A
+question is not a statement, so neither direction produces entailment
+signal on this corpus. The v1 grader choice in the plan was wrong.
+
+Next options (need Shoval's word): a passage-ranking cross-encoder
+(MS MARCO, the tool actually trained for query-passage relevance) or
+the OpenJev-style decision model from the approved Jev hybrid
+experiment. Neither was attempted here.
+
+## Corrective layer (Phase A v2, 2026-10-14: NEGATIVE RESULT)
+
+Shoval chose option 1 (OpenJev-style decision model). The Jev hybrid
+experiment had not landed (no branch, no code: `feat/jev-router` is an
+unrelated cost router), so v2 was built standalone. A parallel GitHub
+synthesis (`~/workspace/company/research/corrective-rag-github-synthesis-2026-10-14.md`)
+found the exact failure documented in Heman10x-NGU/openJev-verdict-2.0:
+NLI backbones expect the hypothesis to be a *statement*, not a bare
+question; their fix is hypothesis templating ("It is {description}",
++6.9 pts). Three cheap experiments were run before the full decision
+model, all on the same 108-pair dev set, all with temperature scaling +
+ECE (calibrated probabilities, not argmax):
+
+| # | model | formulation | T | ECE | mean rel | mean irr | gate |
+|---|---|---|---|---|---|---|---|
+| 1a | DeBERTa-v3-small NLI | premise=chunk, hyp=question (bare) | 5.00 (edge) | 0.274 | 0.200 | 0.197 | FAIL |
+| 1b | DeBERTa-v3-small NLI | hyp="This passage answers the question: {q}" | 5.00 (edge) | 0.259 | 0.217 | 0.213 | FAIL* |
+| 1c | DeBERTa-v3-small NLI | hyp="The following passage contains the answer to: {q}" | 5.00 (edge) | 0.285 | 0.202 | 0.207 | FAIL |
+| 2a | GLiClass-small (143M) | labels=["relevant","irrelevant"], single-label | 5.00 (edge) | 0.246 | 0.662 | 0.651 | FAIL |
+| 2b | GLiClass-small (143M) | labels=["this passage answers the question", ...] | 5.00 (edge) | 0.259 | 0.730 | 0.715 | FAIL* |
+| 3 | OpenJev qwen3.5-0.8b-nli-v2s-long (853M) | premise=chunk, hyp="This passage answers the question: {q}" | 5.00 (edge) | 0.059 | 0.510 | 0.415 | FAIL |
+
+\* 1b and 2b show a degenerate "PASS" (precision 1.000 at n_flagged=1,
+recall 0.020): a single flagged pair, noise not signal. The v2 harness
+(`tools/docs-rag/calibrate.py`) now rejects these by rule: PASS requires
+precision >= 0.9 AND recall >= 0.25 AND n_flagged >= 10.
+
+Read of the results:
+- Hypothesis templating does **not** rescue the NLI cross-encoder here.
+  The +6.9 pt fix from openJev-verdict-2.0 does not transfer: all three
+  NLI formulations sit at the temperature grid edge (T=5.00), meaning
+  flattening everything was optimal, i.e. the logits carry no signal.
+- GLiClass (the OpenJev-style decision model in commodity form) also
+  shows no separation (mean gap <= 0.014, T at edge).
+- The real OpenJev checkpoint is the best of the six (mean gap 0.095,
+  ECE 0.059, precision 0.77 at recall 0.34, 0.80 at recall 0.08) but
+  nowhere near the gate: no threshold reaches precision 0.9 with usable
+  recall.
+- The dev set is not the problem: manual inspection shows the labels
+  are human-distinguishable (relevant and irrelevant chunks are
+  topically near-identical, e.g. both about chunking, but only one
+  answers the specific question). The task needs answer-containment
+  judgment, not semantic similarity, and zero-shot models do not do it
+  at the 0.9 bar.
+
+Durable output (branch `olga/corrective-rag-422`, still DO NOT MERGE):
+`tools/docs-rag/calibrate.py` (softmax, temperature fit with high/low
+edge detection, ECE, PR curve, gate verdict with degenerate-pass
+rejection), `tests/test_grader_calibration.py` (11 pass), this section.
+
+What remains untried: MS MARCO passage-ranking cross-encoder (Shoval's
+option 2, the tool actually trained for query-passage relevance), or a
+small classifier trained on the dev set (n=108 is thin; needs a bigger
+labeled set first). The retry loop stays unwired: no grader has passed
+the gate, so per the plan there is nothing to wire it to.
+
 <details><summary><strong>2026-08-30</strong> — 40 reports</summary>
 
 - [artifact extraction](specs/2026-08-30-corpus-artifact-extraction.md)

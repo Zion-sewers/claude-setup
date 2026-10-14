@@ -1,0 +1,980 @@
+{
+ "n_pairs": 108,
+ "n_relevant": 50,
+ "n_irrelevant": 58,
+ "label_quality_note": "Labels are a construct: 'relevant' means 'from the ground-truth doc, retrieved top-10, AND from a substance section (Problem/Solution/... \u2014 Scope, Non-goals, See-also, and title-only header chunks are excluded by rule because they carry no answer content by construction'. Residual noise is possible (a Problem chunk may motivate without answering); a manual audit sample is recorded in docs/RAG.md. 'Irrelevant' means 'non-truth chunk retrieved top-10 (hard negative)'.",
+ "pairs": [
+  {
+   "id": "Q01-R0",
+   "question": "How does the corpus chunker split documents into indexable chunks, and what are its target chunk size and minimum fragment size?",
+   "doc_id": "2026-08-30-corpus-chunker",
+   "chunk_id": "2026-08-30-corpus-chunker#c001",
+   "text": "[Corpus Document Chunker / Problem]\nStage 2 of the ingestion pipeline requires splitting markdown documents\ninto indexable chunks.  Raw files range from single paragraphs to\n10,000-word documents.  Without a chunker, downstream stages (dedup,\ncitation gate, embedding) operate on entire files, producing chunks too\nlarge for retrieval and too coarse for kind classification.\n\nThe parent spec (section 4.1a) establishes the strategy: section-based\nsplitting on h2/h3 headings, with long sections subdivided at paragraph\nboundaries, targeting ~350 words per chunk with a 30-word floor for\nfragment filtering.",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q01-R1",
+   "question": "How does the corpus chunker split documents into indexable chunks, and what are its target chunk size and minimum fragment size?",
+   "doc_id": "2026-08-30-corpus-chunker",
+   "chunk_id": "2026-08-30-corpus-chunker#c002",
+   "text": "[Corpus Document Chunker / Solution]\nA new tool `tools/corpus/chunker.py` implementing stage 2:\n\n- `chunk --text TEXT [--source-id SID] [--json]`: chunk a text string,\n  showing chunk IDs, kinds, word counts, and heading paths.\n- `ingest --path FILE --source-id SID [--db PATH] [--dry-run]`: chunk\n  a file and insert rows into the chunks table.\n- `scan --dir DIR [--db PATH] [--json]`: scan a directory for markdown\n  files, reporting chunk counts per file.\n- `stats [--db PATH] [--json]`: chunk statistics from the database.\n- `selftest`: exercises 17 checks.\n\n### Chunking steps\n\nThree operations, applied in order:\n\n1. **Normalise**: applies `normalise_text()` from stage 0 (NFC, mojibake\n   repair, dash mapping, trailing whitespace) before any splitting.\n2. **Heading split**: regex `^(#{2,3})\\s+(.+)$` splits on h2/h3\n   boundaries.  Preamble before the first heading becomes its own\n   section.  Heading paths are captured: bare title for h2, `h3:title`\n   for h3.\n3. **Subdivide**: sections exceeding 350 words are split on paragraph\n   boundaries (`\\n\\s*\\n`).  Fragments under 30 words in multi-part\n   sections are dropped.\n\n### Chunk properties\n\nEach chunk carries:",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q01-R2",
+   "question": "How does the corpus chunker split documents into indexable chunks, and what are its target chunk size and minimum fragment size?",
+   "doc_id": "2026-08-30-corpus-chunker",
+   "chunk_id": "2026-08-30-corpus-chunker#c003",
+   "text": "[Corpus Document Chunker / Solution]\n- `chunk_id`: deterministic, `\"c\" + sha256(norm_text)[:16]`\n- `source_id`: propagated from caller\n- `ordinal`: sequential within the document\n- `heading_path`: section heading for retrieval context\n- `kind`: detected by `reclassify._detect_kind()` (claim, code, table,\n  config, link, prose)\n- `norm_text` / `raw_text`: normalised text (both set to the same\n  normalised value since normalisation precedes chunking)\n- `word_count`, `norm_sha256`, `simhash`, `citation_count`, `status`\n\n### Design properties\n\n- **In-process**: uses `normalise_text()` and `_detect_kind()` as\n  library imports, no shelling out.\n- **Deterministic**: same input always produces the same chunk IDs.\n- **Idempotent**: duplicate inserts are silently skipped (try/except\n  on INSERT).\n- **Composable**: `chunk_text()` returns a list of dicts usable by\n  `pipeline.py` without database access.",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q01-I0",
+   "question": "How does the corpus chunker split documents into indexable chunks, and what are its target chunk size and minimum fragment size?",
+   "doc_id": "2026-07-31-research-corpus-and-cache",
+   "chunk_id": "2026-07-31-research-corpus-and-cache#c018",
+   "text": "[Research corpus and cache (row-reuse, cache2action) / 4. The store]\n### 4.1 Sizing first, choice second\n\nThe local corpus is 782,617 words, 5.43 MiB of text, producing an estimated\n**7,336 chunks** at ~350 words each, measured by splitting on h2/h3 boundaries\nand subdividing long sections. External vendor sources, if all eight land, add an\nestimated 8,000 to 15,000 chunks, dominated by system-design-primer and the mcp\nrepos. Design target: **25,000 chunks**, one order of headroom.\n\nThat number decides everything.\n\n### 4.1a Chunking: the one thing this spec asserted instead of deciding\n\n> **Cross-ref:** Stage 2 section-based chunking is implemented in\n> `tools/corpus/chunker.py`, spec at\n> `docs/specs/2026-08-30-corpus-chunker.md`.\n\n**GAP FOUND 2026-08-03 by comparison against DigitalOcean's published knowledge-base and\nchunking-strategy docs.** The sentence above is the entire chunking strategy: ~350 words,\nsplit on h2/h3, subdivide long sections. That is DigitalOcean's **section-based** strategy,\npicked without naming an alternative, and applied uniformly to a corpus the atlas measures\nat **420 documents across 16 clusters**: linguistics wiki dumps, four commercial sales\nbooks, API-shaped specs, generated maps, and code.\n\nBy DO's own content-type guidance that span calls for three different strategies:",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q01-I1",
+   "question": "How does the corpus chunker split documents into indexable chunks, and what are its target chunk size and minimum fragment size?",
+   "doc_id": "2026-07-31-research-corpus-and-cache",
+   "chunk_id": "2026-07-31-research-corpus-and-cache#c020",
+   "text": "[Research corpus and cache (row-reuse, cache2action) / 4. The store]\n**What changes in this spec.** Chunking becomes **per-cluster, keyed off the atlas\ncluster** rather than one rule for the corpus: fixed-length for `generated-map` and code,\nsection-based for `spec`, `adr`, `prd`, `analysis`, semantic for `sales-and-books` and\n`linguistics`, hierarchical for `research-prompt` and `sota-report`. The chunk count above\nis therefore an estimate under one strategy and will move once the strategies differ; it is\nkept because the **order of magnitude** is what the ANN rejection rests on, and three\nstrategies do not change 25,000 into 250,000.\n\n**Cost of fixing this now: zero.** The status of this spec is `proposed` and nothing has\nbeen indexed. The same gap discovered after the first index costs a full re-embed.\n\n**Prior art owed.** `docs/prior-art/` carries no record for a corpus or retrieval\ncomponent. If this is built, DigitalOcean's four-strategy table is a named alternative that\nrecord has to answer.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q01-I2",
+   "question": "How does the corpus chunker split documents into indexable chunks, and what are its target chunk size and minimum fragment size?",
+   "doc_id": "2026-08-31-corpus-chunk-profile",
+   "chunk_id": "2026-08-31-corpus-chunk-profile#c005",
+   "text": "[Corpus Chunk Profile / Scope]\n- `tools/corpus/chunk_profile.py`: new tool\n- `docs/specs/2026-08-31-corpus-chunk-profile.md`: this spec",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q02-R0",
+   "question": "Which license classes does the license gate define, and which licenses fall into the vendor and index_only classes?",
+   "doc_id": "2026-08-30-corpus-license-gate",
+   "chunk_id": "2026-08-30-corpus-license-gate#c002",
+   "text": "[Corpus License Gate / Solution]\nA new tool `tools/corpus/license_gate.py` with four subcommands:\n\n- `check --uri URI --license SPDX [--verdict VERDICT] [--mtime TIME]`:\n  checks a single source against the license gate and returns its\n  verdict, liveness, reason, and admit/refuse decision.\n- `batch --manifest PATH`: screens a JSON manifest of candidate sources\n  and reports admitted vs refused counts with reasons.\n- `blocked`: lists all blocked hostnames.\n- `selftest`: exercises 9 checks covering hostname blocking, license\n  classification, liveness detection, and batch screening.\n\n### License classification\n\nEach source gets a verdict derived from its SPDX license identifier:\n\n- `vendor`: MIT, Apache-2.0, CC-BY-4.0, and other permissive licenses.\n  Permits copying with attribution.\n- `index_only`: CC-BY-SA (ShareAlike). May store locally for retrieval\n  but must not redistribute in repo output.\n- `link_only`: GPL, CC-BY-NC (copyleft or NonCommercial). Store URL\n  and notes only, never the source text.\n- `blocked`: all rights reserved, NOASSERTION, or hostname in the\n  blocklist. Refused entirely.\n\n### Hostname blocklist\n\n`nilbuild/developer-roadmap` and its old alias\n`kamranahmedse/developer-roadmap` are blocked by canonical hostname.\nThe pipeline refuses them before reading any content, per the spec\nrequirement that the block is by hostname, not by policy prose.\n\n### Liveness",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q02-R1",
+   "question": "Which license classes does the license gate define, and which licenses fall into the vendor and index_only classes?",
+   "doc_id": "2026-08-30-corpus-license-gate",
+   "chunk_id": "2026-08-30-corpus-license-gate#c005",
+   "text": "[Corpus License Gate / Design decisions]\n- Hostname matching over URI parsing: simple substring match on the\n  canonical URI is sufficient since all URIs follow the\n  `github://owner/repo` pattern.\n- Override mechanism: `override_verdict` allows the operator to force\n  a verdict for edge cases (e.g. CC-BY-4.0 30-seconds-of-code demoted\n  to index_only for size reasons).\n- NOASSERTION blocked: GitHub's NOASSERTION label hides the actual\n  license. The gate refuses it and requires reading the LICENSE file.\n- Admitted = vendor or index_only: link_only and blocked are refused.\n  link_only sources can still have their URLs stored manually but\n  cannot enter the ingestion pipeline.",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q02-R2",
+   "question": "Which license classes does the license gate define, and which licenses fall into the vendor and index_only classes?",
+   "doc_id": "2026-08-30-corpus-license-gate",
+   "chunk_id": "2026-08-30-corpus-license-gate#c001",
+   "text": "[Corpus License Gate / Problem]\nThe research corpus spec identified 13 external seed sources with\nvarying license terms. 1 was legally blocked (developer-roadmap, all\nrights reserved), 2 were copyleft (GPL, NC), and the rest ranged from\nMIT to CC-BY-SA. ADR-0005 requires enforcement over prose: a source\nthat must not be ingested should be refused by a mechanical gate, not\nby a sentence in a document. Step 6 of the spec called for a stage 1\nlicense gate that refuses blocked sources by canonical hostname.",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q02-I0",
+   "question": "Which license classes does the license gate define, and which licenses fall into the vendor and index_only classes?",
+   "doc_id": "2026-08-31-corpus-license-tag-profile",
+   "chunk_id": "2026-08-31-corpus-license-tag-profile#c001",
+   "text": "[Corpus License Tag Profile / Problem]\nlicense_gate.py enforces license compliance.\npublisher_license_distribution.py profiles publishers by license.\nNo tool joins sources.license_spdx with chunk_tags to measure which\nlicense categories concentrate which tags, whether open licenses\nattract broader tag vocabularies, or how tag scores vary by license.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q02-I1",
+   "question": "Which license classes does the license gate define, and which licenses fall into the vendor and index_only classes?",
+   "doc_id": "2026-07-31-research-corpus-and-cache",
+   "chunk_id": "2026-07-31-research-corpus-and-cache#c010",
+   "text": "[Research corpus and cache (row-reuse, cache2action) / 3. External seed sources]\n| 2026-07-09 | README prose | link-only, NC risk |\n| 13a | `modelcontextprotocol/modelcontextprotocol` | Apache-2.0 and MIT, in transition | 55,581 | 2026-07-30 | spec TS plus docs | vendor |\n| 13b | `modelcontextprotocol/servers` | same transition | 29,656 | 2026-07-29 | TS and Python source | vendor |\n| 13c | `modelcontextprotocol/python-sdk` | MIT | 12,692 | 2026-07-30 | Python source | vendor |\n\n### 3.1 Licensing conclusions, stated per source\n\nDefinitions. **vendor** means we may copy extracted content into this repo with\nattribution. **index-only** means we may fetch, chunk, and store locally for\nretrieval but must not redistribute the text in repo output or commits.\n**link-only** means store the URL and our own notes, never the source text.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q02-I2",
+   "question": "Which license classes does the license gate define, and which licenses fall into the vendor and index_only classes?",
+   "doc_id": "2026-08-31-corpus-publisher-license-distribution",
+   "chunk_id": "2026-08-31-corpus-publisher-license-distribution#c001",
+   "text": "[Corpus Publisher and License Distribution / Problem]\nThe sources table stores publisher and license_spdx columns, but no\ntool analysed their distributions.  Understanding which publishers\ncontribute the most sources, how concentrated the corpus is across\npublishers, and which license types dominate required manual SQL.\nThe existing license_gate.py validates individual sources at\ningestion but does not report corpus-wide license patterns.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q03-R0",
+   "question": "What are the four subcommands of the dedup tool, and what does the apply subcommand do to exact duplicates?",
+   "doc_id": "2026-08-30-corpus-dedup",
+   "chunk_id": "2026-08-30-corpus-dedup#c002",
+   "text": "[Corpus Deduplication / Solution]\nA new tool `tools/corpus/dedup.py` with four subcommands:\n\n- `exact [--db PATH] [--json]`: finds groups of chunks sharing the same\n  `norm_sha256`, excluding already-superseded chunks.  Reports group\n  membership with source titles and statuses.\n- `near [--db PATH] [--threshold N] [--json]`: finds chunk pairs within\n  a simhash hamming distance threshold (default 5), for detecting\n  near-duplicates from versioned drafts or encoding damage.\n- `apply [--db PATH] [--dry-run]`: marks exact duplicates as superseded,\n  keeping the earliest-ingested chunk as the keeper.  Creates `duplicates`\n  edges in `claim_edges` with `basis='norm_sha256'` and `confidence=1.0`.\n- `stats [--db PATH] [--json]`: reports total, active, and superseded\n  chunk counts, duplicate group counts, unique hash counts, and the\n  dedup rate.\n- `selftest`: exercises 16 checks covering exact and near detection,\n  apply with dry-run, edge creation, and empty corpus handling.\n\n### Design properties",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q03-R1",
+   "question": "What are the four subcommands of the dedup tool, and what does the apply subcommand do to exact duplicates?",
+   "doc_id": "2026-08-30-corpus-dedup",
+   "chunk_id": "2026-08-30-corpus-dedup#c003",
+   "text": "[Corpus Deduplication / Solution]\n- **Three-class coverage**: exact matching (class A), simhash near-match\n  (class B), with normalisation preceding hashing (class C) handled by\n  the existing `norm_text` column.\n- **Keeper selection**: earliest-ingested chunk wins, preserving temporal\n  ordering and provenance.\n- **Auditable**: every dedup action creates a `claim_edges` row with\n  `edge_type='duplicates'`, so the relationship is queryable and\n  reversible.\n- **Non-destructive by default**: apply defaults to dry-run mode.",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q03-I0",
+   "question": "What are the four subcommands of the dedup tool, and what does the apply subcommand do to exact duplicates?",
+   "doc_id": "2026-08-30-corpus-semantic-dedup",
+   "chunk_id": "2026-08-30-corpus-semantic-dedup#c002",
+   "text": "[Corpus Semantic Deduplication / Solution]\nA new tool `tools/corpus/semantic_dedup.py` that uses the PCA-reduced TF-IDF\nvectors from `embed.py` to find chunk pairs with high cosine similarity.\n\n### How it works\n\n1. Loads the L2-normalised vectors from `corpus-vec.npy` (produced by\n   `embed.py fit`). Because the vectors are unit-length, cosine similarity\n   reduces to a dot product.\n2. Checks that the vector generation matches the corpus generation counter,\n   refusing to operate on stale vectors.\n3. Computes the full pairwise similarity matrix and extracts pairs above the\n   configurable threshold (default 0.85).\n4. Excludes pairs already linked by existing `duplicates` edges in\n   `claim_edges`, preventing double-marking.\n5. Excludes superseded chunks from both scan and apply.\n\n### Tool commands\n\n- `scan [--db PATH] [--threshold F] [--json]`: reports semantic duplicate\n  pairs above the cosine similarity threshold, sorted by similarity descending.\n- `apply [--db PATH] [--threshold F] [--dry-run]`: marks the shorter chunk in\n  each pair as superseded (longer chunks carry more information). Creates\n  `duplicates` edges in `claim_edges` with `basis='embedding_cosine'` and the\n  actual cosine similarity as confidence.\n- `stats [--db PATH] [--json]`: statistics on semantic dedup activity including\n  edge counts, superseded counts, and average cosine similarity.\n- `selftest`: exercises 14 checks.\n\n### Design properties",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q03-I1",
+   "question": "What are the four subcommands of the dedup tool, and what does the apply subcommand do to exact duplicates?",
+   "doc_id": "2026-08-30-corpus-semantic-dedup",
+   "chunk_id": "2026-08-30-corpus-semantic-dedup#c001",
+   "text": "[Corpus Semantic Deduplication / Problem]\nThe existing dedup tool (`tools/corpus/dedup.py`) detects exact-hash (Class A)\nand simhash near-match (Class B) duplicates, but misses paraphrase-level\nduplicates: chunks that convey the same information using different wording.\nThese rephrased passages survive hash-based detection because their byte\nrepresentations differ, yet they inflate the corpus and skew retrieval results.\n\nThe dedup spec explicitly lists \"Semantic deduplication using embeddings\" as a\nnon-goal. This tool fills that gap using the dense vectors already produced by\n`tools/corpus/embed.py`.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q03-I2",
+   "question": "What are the four subcommands of the dedup tool, and what does the apply subcommand do to exact duplicates?",
+   "doc_id": "2026-08-30-corpus-semantic-dedup",
+   "chunk_id": "2026-08-30-corpus-semantic-dedup#c006",
+   "text": "[Corpus Semantic Deduplication / See also]\n- [corpus-dedup](2026-08-30-corpus-dedup.md): hash-based deduplication\n  (Class A/B/C) that this tool extends with semantic matching.\n- [corpus-embedding-rerank](2026-08-30-corpus-embedding-rerank.md): produces\n  the dense vectors this tool consumes.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q04-R0",
+   "question": "How does the semantic dedup tool find duplicate chunks, and which chunk of a duplicate pair gets marked?",
+   "doc_id": "2026-08-30-corpus-semantic-dedup",
+   "chunk_id": "2026-08-30-corpus-semantic-dedup#c002",
+   "text": "[Corpus Semantic Deduplication / Solution]\nA new tool `tools/corpus/semantic_dedup.py` that uses the PCA-reduced TF-IDF\nvectors from `embed.py` to find chunk pairs with high cosine similarity.\n\n### How it works\n\n1. Loads the L2-normalised vectors from `corpus-vec.npy` (produced by\n   `embed.py fit`). Because the vectors are unit-length, cosine similarity\n   reduces to a dot product.\n2. Checks that the vector generation matches the corpus generation counter,\n   refusing to operate on stale vectors.\n3. Computes the full pairwise similarity matrix and extracts pairs above the\n   configurable threshold (default 0.85).\n4. Excludes pairs already linked by existing `duplicates` edges in\n   `claim_edges`, preventing double-marking.\n5. Excludes superseded chunks from both scan and apply.\n\n### Tool commands\n\n- `scan [--db PATH] [--threshold F] [--json]`: reports semantic duplicate\n  pairs above the cosine similarity threshold, sorted by similarity descending.\n- `apply [--db PATH] [--threshold F] [--dry-run]`: marks the shorter chunk in\n  each pair as superseded (longer chunks carry more information). Creates\n  `duplicates` edges in `claim_edges` with `basis='embedding_cosine'` and the\n  actual cosine similarity as confidence.\n- `stats [--db PATH] [--json]`: statistics on semantic dedup activity including\n  edge counts, superseded counts, and average cosine similarity.\n- `selftest`: exercises 14 checks.\n\n### Design properties",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q04-R1",
+   "question": "How does the semantic dedup tool find duplicate chunks, and which chunk of a duplicate pair gets marked?",
+   "doc_id": "2026-08-30-corpus-semantic-dedup",
+   "chunk_id": "2026-08-30-corpus-semantic-dedup#c003",
+   "text": "[Corpus Semantic Deduplication / Solution]\n- **Embedding-based**: uses dense PCA-reduced TF-IDF vectors, not hash-based\n  comparison, catching paraphrases that simhash misses.\n- **Generation-aware**: refuses to scan or apply when vectors are stale\n  (generation mismatch), returning `vectors_unavailable` rather than producing\n  incorrect results.\n- **Non-destructive by default**: apply defaults to dry-run mode.\n- **Auditable**: every action creates a `claim_edges` row with\n  `edge_type='duplicates'` and `basis='embedding_cosine'`, distinguishing\n  semantic dedup from hash-based dedup (`basis='norm_sha256'`).\n- **Keeper selection**: the longer chunk (by word count) is kept, preserving\n  the more informative version. Ties break by alphabetical chunk_id.\n- **Incremental**: re-running scan after apply excludes already-linked pairs.",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q04-R2",
+   "question": "How does the semantic dedup tool find duplicate chunks, and which chunk of a duplicate pair gets marked?",
+   "doc_id": "2026-08-30-corpus-semantic-dedup",
+   "chunk_id": "2026-08-30-corpus-semantic-dedup#c001",
+   "text": "[Corpus Semantic Deduplication / Problem]\nThe existing dedup tool (`tools/corpus/dedup.py`) detects exact-hash (Class A)\nand simhash near-match (Class B) duplicates, but misses paraphrase-level\nduplicates: chunks that convey the same information using different wording.\nThese rephrased passages survive hash-based detection because their byte\nrepresentations differ, yet they inflate the corpus and skew retrieval results.\n\nThe dedup spec explicitly lists \"Semantic deduplication using embeddings\" as a\nnon-goal. This tool fills that gap using the dense vectors already produced by\n`tools/corpus/embed.py`.",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q04-I0",
+   "question": "How does the semantic dedup tool find duplicate chunks, and which chunk of a duplicate pair gets marked?",
+   "doc_id": "2026-08-30-corpus-dedup",
+   "chunk_id": "2026-08-30-corpus-dedup#c002",
+   "text": "[Corpus Deduplication / Solution]\nA new tool `tools/corpus/dedup.py` with four subcommands:\n\n- `exact [--db PATH] [--json]`: finds groups of chunks sharing the same\n  `norm_sha256`, excluding already-superseded chunks.  Reports group\n  membership with source titles and statuses.\n- `near [--db PATH] [--threshold N] [--json]`: finds chunk pairs within\n  a simhash hamming distance threshold (default 5), for detecting\n  near-duplicates from versioned drafts or encoding damage.\n- `apply [--db PATH] [--dry-run]`: marks exact duplicates as superseded,\n  keeping the earliest-ingested chunk as the keeper.  Creates `duplicates`\n  edges in `claim_edges` with `basis='norm_sha256'` and `confidence=1.0`.\n- `stats [--db PATH] [--json]`: reports total, active, and superseded\n  chunk counts, duplicate group counts, unique hash counts, and the\n  dedup rate.\n- `selftest`: exercises 16 checks covering exact and near detection,\n  apply with dry-run, edge creation, and empty corpus handling.\n\n### Design properties",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q04-I1",
+   "question": "How does the semantic dedup tool find duplicate chunks, and which chunk of a duplicate pair gets marked?",
+   "doc_id": "2026-08-30-corpus-dedup",
+   "chunk_id": "2026-08-30-corpus-dedup#c006",
+   "text": "[Corpus Deduplication / See also]\n- [corpus-semantic-dedup](2026-08-30-corpus-semantic-dedup.md): extends\n  this tool with embedding-based semantic deduplication for paraphrases.\n- [corpus-simhash-distribution](2026-08-31-corpus-simhash-distribution.md):\n  analyses the quality of simhash distribution underlying this tool's\n  near-duplicate detection.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q04-I2",
+   "question": "How does the semantic dedup tool find duplicate chunks, and which chunk of a duplicate pair gets marked?",
+   "doc_id": "2026-08-31-corpus-source-overlap",
+   "chunk_id": "2026-08-31-corpus-source-overlap#c005",
+   "text": "[Corpus Source Overlap Analysis / See also]\n- [corpus-similarity-store](2026-08-30-corpus-similarity-store.md):\n  provides the chunk_similarities data this tool aggregates.\n- [corpus-semantic-dedup](2026-08-30-corpus-semantic-dedup.md):\n  deduplicates individual chunks; this tool measures overlap at the\n  source level.\n- [corpus-source-impact](2026-08-31-corpus-source-impact.md): scores\n  sources by analytical footprint; this tool measures their content\n  redundancy.\n- [corpus-timeline](2026-08-31-corpus-timeline.md): analyses temporal\n  patterns; this tool analyses content redundancy patterns.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q05-R0",
+   "question": "What is the corpus audit tool and what are its six subcommands for cross-referencing corpus signals?",
+   "doc_id": "2026-08-31-corpus-audit",
+   "chunk_id": "2026-08-31-corpus-audit#c001",
+   "text": "[Corpus Audit / Problem]\nIndividual corpus tools report signals in isolation: the dashboard counts\norphans, the tag store shows scores, the claim network finds\ncontradictions.  No tool cross-referenced these signals to surface\nactionable issues, such as contradictions between chunks that a\nclustering algorithm placed in the same group, or sources where most\nchunks have been superseded.",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q05-R1",
+   "question": "What is the corpus audit tool and what are its six subcommands for cross-referencing corpus signals?",
+   "doc_id": "2026-08-31-corpus-audit",
+   "chunk_id": "2026-08-31-corpus-audit#c002",
+   "text": "[Corpus Audit / Solution]\nA new tool `tools/corpus/corpus_audit.py` with six subcommands:\n\n- `contradictions [--db PATH] [--json]`: finds unresolved contradictions\n  where both chunks share a cluster label.  These are the highest\n  priority disputes because the clustering algorithm judged the chunks\n  topically related yet their claims conflict.\n- `citations [--db PATH] [--json]`: finds unverified citations on\n  accepted chunks.  These are claims the corpus treats as valid but\n  whose evidence has not been checked.\n- `weak-tags [--db PATH] [--threshold F] [--json]`: finds tags assigned\n  with confidence below threshold (default 0.5).  Low-confidence tags\n  may be noise from the auto-tagger.\n- `orphans [--db PATH] [--json]`: finds accepted chunks with no edges,\n  citations, tags, or topic assignment.  These chunks are invisible to\n  every analytical tool.\n- `stale-sources [--db PATH] [--threshold F] [--json]`: finds sources\n  where more than threshold fraction of chunks are superseded (default\n  0.5).  These sources may need re-ingestion or retirement.\n- `full [--db PATH] [--json]`: runs all five checks and combines results\n  into one report.\n- `selftest`: exercises 14 checks covering intra-cluster contradiction\n  detection, resolved-edge exclusion, cross-cluster exclusion, unverified\n  citation filtering, weak-tag thresholding, orphan detection, stale\n  source detection, full audit composition, JSON serialisation, and empty\n  corpus handling.\n\n### Design properties",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q05-R2",
+   "question": "What is the corpus audit tool and what are its six subcommands for cross-referencing corpus signals?",
+   "doc_id": "2026-08-31-corpus-audit",
+   "chunk_id": "2026-08-31-corpus-audit#c003",
+   "text": "[Corpus Audit / Solution]\n- **Cross-signal**: each check combines data from at least two tables,\n  surfacing issues no single-table query can find.\n- **Resolution aware**: contradiction check excludes resolved edges.\n- **Missing-table resilient**: each check returns empty when its tables\n  have not been created yet.\n- **Threshold tunable**: weak-tag and stale-source thresholds are CLI\n  arguments with sensible defaults.",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q05-I0",
+   "question": "What is the corpus audit tool and what are its six subcommands for cross-referencing corpus signals?",
+   "doc_id": "2026-08-31-corpus-health-scorecard",
+   "chunk_id": "2026-08-31-corpus-health-scorecard#c006",
+   "text": "[Corpus Health Scorecard / See also]\n- [corpus-similarity-analysis](2026-08-31-corpus-similarity-analysis.md):\n  analyses chunk relatedness patterns; this tool aggregates all signal\n  tables into a quality summary.\n- [corpus-audit](2026-08-31-corpus-audit.md): the audit tool checks\n  for specific quality problems; this tool provides quantitative\n  dimension scores.\n- [corpus-freshness-scorer](2026-08-31-corpus-freshness-scorer.md):\n  per-chunk temporal freshness scoring; this tool covers the quality\n  dimensions that are not time-sensitive.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q05-I1",
+   "question": "What is the corpus audit tool and what are its six subcommands for cross-referencing corpus signals?",
+   "doc_id": "2026-08-31-corpus-dashboard",
+   "chunk_id": "2026-08-31-corpus-dashboard#c002",
+   "text": "[Corpus Dashboard / Solution]\nA new tool `tools/corpus/dashboard.py` with three subcommands:\n\n- `overview [--db PATH] [--json]`: chunk counts by status (active,\n  superseded, accepted, quarantined) and kind, plus source totals and\n  liveness counts.\n- `health [--db PATH] [--json]`: edge statistics (total, unresolved,\n  open contradictions, by type), citation and artifact counts, and\n  orphan claim chunk detection (accepted claims with no citations or\n  edges).\n- `signals [--db PATH] [--json]`: analytical signal coverage across\n  topics, clusters, tags, similarities, and domains.  For each signal\n  reports chunks covered, distinct label count, and coverage ratio.\n- `selftest`: exercises 14 checks covering all three subcommands,\n  kind breakdowns, edge type breakdowns, orphan detection, signal\n  coverage, superseded-chunk exclusion, missing analytical tables, and\n  JSON serialisation.\n\n### Design properties\n\n- **Single-command overview**: answers \"what does the corpus look like?\"\n  without running five separate tools.\n- **Missing-table resilient**: each signal degrades to zero coverage\n  when its analytical table has not been created yet.\n- **Orphan detection**: finds accepted claim chunks with no citations\n  or edges in any direction.\n- **Superseded-chunk aware**: overview and signal coverage count only\n  active chunks.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q05-I2",
+   "question": "What is the corpus audit tool and what are its six subcommands for cross-referencing corpus signals?",
+   "doc_id": "2026-08-31-corpus-artifact-adoption",
+   "chunk_id": "2026-08-31-corpus-artifact-adoption#c006",
+   "text": "[Corpus Artifact Adoption / See also]\n- [corpus-chunk-evolution](2026-08-31-corpus-chunk-evolution.md):\n  analyses content change patterns; this tool analyses technology\n  reference patterns.\n- [corpus-chunk-profile](2026-08-31-corpus-chunk-profile.md):\n  includes artifact data in chunk dossiers; this tool aggregates\n  adoption across the corpus.\n- [corpus-audit](2026-08-31-corpus-audit.md): detects cross-signal\n  issues; orphan artifacts are a related integrity concern.\n\n- [corpus-domain-analysis](2026-08-31-corpus-domain-analysis.md):\n  analyses semantic domain classifications; this tool analyses\n  technology artifact patterns.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q06-R0",
+   "question": "Why can a biased simhash function or skewed inputs create blind spots in near-duplicate detection?",
+   "doc_id": "2026-08-31-corpus-simhash-distribution",
+   "chunk_id": "2026-08-31-corpus-simhash-distribution#c001",
+   "text": "[Corpus Simhash Distribution / Problem]\nThe corpus uses simhash for near-duplicate detection, but no tool\nanalysed the quality of the hash distribution itself.  A biased\nhash function or skewed inputs can cause clustering in hash space,\ncreating blind spots where distinct chunks share hashes while\ngenuinely similar chunks land far apart.  Detecting these patterns\nrequired manual bit-level analysis of the simhash column.",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q06-R1",
+   "question": "Why can a biased simhash function or skewed inputs create blind spots in near-duplicate detection?",
+   "doc_id": "2026-08-31-corpus-simhash-distribution",
+   "chunk_id": "2026-08-31-corpus-simhash-distribution#c003",
+   "text": "[Corpus Simhash Distribution / Solution]\n- **Bit-level analysis**: examines individual bit positions rather\n  than treating hashes as opaque values, revealing systematic bias\n  in the hash function or input distribution.\n- **Collision-aware**: groups exact collisions to distinguish\n  expected near-duplicate matches from hash-space saturation.\n- **Popcount distribution**: the set-bit count is a proxy for\n  hash-space coverage, and its distribution reveals whether\n  hashes cluster in a narrow band or spread evenly.\n- **Accepted-only scope**: analyses only accepted chunks, matching\n  the dedup system's working set.",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q06-I0",
+   "question": "Why can a biased simhash function or skewed inputs create blind spots in near-duplicate detection?",
+   "doc_id": "2026-08-31-corpus-simhash-edge-profile",
+   "chunk_id": "2026-08-31-corpus-simhash-edge-profile#c007",
+   "text": "[Corpus Simhash Edge Profile / Non-goals]\n- Hamming distance computation between non-colliding simhashes.\n- Simhash-based edge prediction or recommendation.\n- Cross-source simhash comparison.\n- Near-duplicate detection (covered by semantic_dedup).",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q06-I1",
+   "question": "Why can a biased simhash function or skewed inputs create blind spots in near-duplicate detection?",
+   "doc_id": "2026-08-31-corpus-simhash-status-profile",
+   "chunk_id": "2026-08-31-corpus-simhash-status-profile#c006",
+   "text": "[Corpus Simhash Status Profile / Non-goals]\n- Automatic deduplication from simhash collisions.\n- Status prediction from simhash similarity.\n- Simhash threshold tuning from status patterns.\n- Near-duplicate merging based on quality scores.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q06-I2",
+   "question": "Why can a biased simhash function or skewed inputs create blind spots in near-duplicate detection?",
+   "doc_id": "2026-08-30-corpus-dedup",
+   "chunk_id": "2026-08-30-corpus-dedup#c006",
+   "text": "[Corpus Deduplication / See also]\n- [corpus-semantic-dedup](2026-08-30-corpus-semantic-dedup.md): extends\n  this tool with embedding-based semantic deduplication for paraphrases.\n- [corpus-simhash-distribution](2026-08-31-corpus-simhash-distribution.md):\n  analyses the quality of simhash distribution underlying this tool's\n  near-duplicate detection.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q07-R0",
+   "question": "What limitation of tagger.py with 20 keyword lists and semantic.py with 20 domain descriptions motivated building a topic model tool?",
+   "doc_id": "2026-08-31-corpus-topic-model",
+   "chunk_id": "2026-08-31-corpus-topic-model#c001",
+   "text": "[Corpus Topic Model / Problem]\nThe existing tagging and classification tools use predefined vocabularies\n(`tagger.py` with 20 keyword lists, `semantic.py` with 20 domain\ndescriptions).  They cannot discover emergent topics that the vocabulary\ndoes not anticipate.  When the corpus grows into an area with no matching\ndomain, chunks in that area receive low scores across all domains and no\nmeaningful label.  The semantic spec lists \"Topic modeling or LDA-style\nunsupervised clustering\" as a non-goal; this tool implements it.",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q07-I0",
+   "question": "What limitation of tagger.py with 20 keyword lists and semantic.py with 20 domain descriptions motivated building a topic model tool?",
+   "doc_id": "2026-08-30-corpus-tagger",
+   "chunk_id": "2026-08-30-corpus-tagger#c002",
+   "text": "[Corpus Auto-Tagger / Solution]\nA new tool `tools/corpus/tagger.py` with four subcommands:\n\n- `tag [--db PATH] [--top-k N] [--min-score F] [--json]`: scores every\n  active chunk against a 20-domain vocabulary using TF-IDF and assigns\n  the top-k tags above the minimum score threshold.\n- `vocab [--json]`: displays the domain vocabulary (20 domains, 200\n  terms total) used for scoring.\n- `chunks --tag TAG [--db PATH] [--json]`: finds all chunks matching a\n  specific tag, sorted by relevance score.\n- `stats [--db PATH] [--json]`: reports tag coverage, distribution\n  across domains, and vocabulary size.\n- `selftest`: exercises 16 checks covering tagging accuracy, filtering,\n  sorting, edge cases, and empty corpus handling.\n\n### TF-IDF scoring\n\nEach domain has a curated term list (e.g. database: sqlite, sql, query,\nschema, etc.).  For each chunk, term frequency is computed from tokenised\ntext, and inverse document frequency is computed across the corpus.  The\nproduct gives a relevance score per domain, and the top-k scoring\ndomains become the chunk's tags.\n\n### Domain vocabulary (20 domains)\n\ndatabase, search, embedding, dedup, citation, testing, security, ml,\npython, typescript, rust, devops, api, prompt, agent, observability,\ndata, git, cloud, quality.\n\n### Design properties",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q07-I1",
+   "question": "What limitation of tagger.py with 20 keyword lists and semantic.py with 20 domain descriptions motivated building a topic model tool?",
+   "doc_id": "2026-08-31-corpus-vocab-analysis",
+   "chunk_id": "2026-08-31-corpus-vocab-analysis#c006",
+   "text": "[Corpus Vocabulary Analysis / See also]\n- [corpus-tagger](2026-08-30-corpus-tagger.md): the auto-tagger whose\n  `DOMAIN_VOCAB` the coverage subcommand measures against.\n- [corpus-topic-model](2026-08-31-corpus-topic-model.md): NMF topic\n  discovery (unsupervised); this tool's `distinctive` subcommand uses\n  supervised TF-IDF per known chunk kind.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q07-I2",
+   "question": "What limitation of tagger.py with 20 keyword lists and semantic.py with 20 domain descriptions motivated building a topic model tool?",
+   "doc_id": "2026-08-30-corpus-domain-store",
+   "chunk_id": "2026-08-30-corpus-domain-store#c001",
+   "text": "[Corpus Domain Store / Problem]\nThe semantic classifier (`tools/corpus/semantic.py`) computes ML-based\ndomain classifications for every chunk using TF-IDF cosine similarity\nagainst 20 domain vocabularies, but discards the results after printing\nthem.  Downstream tools (retrieval, per-domain chunking, cluster-based\nstrategies) need persisted domain data for faceted queries and filtering.\nWithout persistence, every consumer must re-run the classifier from\nscratch, and domain-based filtering is impossible in SQL queries.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q08-R0",
+   "question": "What text complexity signals does the corpus chunk readability scorer measure?",
+   "doc_id": "2026-08-31-corpus-readability",
+   "chunk_id": "2026-08-31-corpus-readability#c002",
+   "text": "[Corpus Chunk Readability Scorer / Solution]\nA new tool `tools/corpus/readability.py` with three subcommands:\n\n- `score [--db PATH] [--json]`: per-chunk readability metrics for\n  accepted chunks.  Reports average word length, type-token ratio,\n  long word ratio, and a composite complexity score on a 0-1 scale.\n  Sorted by complexity descending.\n- `complex [--db PATH] [--threshold F] [--json]`: chunks above the\n  complexity threshold (default 0.5).  These represent dense or\n  jargon-heavy content that may need simplification.\n- `summary [--db PATH] [--json]`: aggregate readability statistics\n  including mean and median complexity, per-kind breakdowns, and\n  complex vs simple chunk counts.\n- `selftest`: exercises 14 checks covering score computation, sort\n  order, relative ordering of simple vs complex text, metric ranges,\n  threshold filtering, summary structure, score bounds, kind\n  breakdowns, positive means, JSON serialisation, and empty corpus.\n\n### Readability metrics\n\nFour signals contribute to the composite complexity score:",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q08-R1",
+   "question": "What text complexity signals does the corpus chunk readability scorer measure?",
+   "doc_id": "2026-08-31-corpus-readability",
+   "chunk_id": "2026-08-31-corpus-readability#c001",
+   "text": "[Corpus Chunk Readability Scorer / Problem]\nThe corpus quality tools measure structural, citation, and freshness\ndimensions, but none measured text complexity.  Chunks with unusually\ndense jargon, long words, or repetitive vocabulary affect how well\nretrieved content serves downstream consumers.  Identifying these\nrequired reading the chunks manually.",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q08-R2",
+   "question": "What text complexity signals does the corpus chunk readability scorer measure?",
+   "doc_id": "2026-08-31-corpus-readability",
+   "chunk_id": "2026-08-31-corpus-readability#c003",
+   "text": "[Corpus Chunk Readability Scorer / Solution]\n1. **Average word length** (weight 0.4): total characters divided by\n   word count, normalised to 0-1 by dividing by 10.  Longer average\n   words indicate more technical or specialised vocabulary.\n2. **Type-token ratio** inverted (weight 0.3): unique words divided\n   by total words, inverted so repetitive text scores higher.  Low\n   vocabulary diversity signals formulaic or repetitive content.\n3. **Long word ratio** (weight 0.3): fraction of words with eight or\n   more characters.  High ratios indicate dense technical prose.\n\n### Design properties\n\n- **No external dependencies**: uses only whitespace tokenisation and\n  character counting, avoiding NLTK or spaCy requirements.\n- **Kind-stratified summary**: per-kind breakdowns reveal whether\n  certain chunk types (code, config, prose) are systematically more\n  or less complex.\n- **Bounded scores**: all metrics and the composite score are\n  bounded to the 0-1 range.",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q08-I0",
+   "question": "What text complexity signals does the corpus chunk readability scorer measure?",
+   "doc_id": "2026-08-31-corpus-edge-text-correlation",
+   "chunk_id": "2026-08-31-corpus-edge-text-correlation#c006",
+   "text": "[Corpus Edge Text Correlation / Non-goals]\n- Readability score computation from raw text.\n- Causal inference between chunk length and edge creation.\n- Automatic chunk resizing for edge optimization.\n- Natural language complexity metrics beyond word count.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q08-I1",
+   "question": "What text complexity signals does the corpus chunk readability scorer measure?",
+   "doc_id": "2026-08-31-corpus-chunk-kind-profile",
+   "chunk_id": "2026-08-31-corpus-chunk-kind-profile#c006",
+   "text": "[Corpus Chunk Kind Profile / See also]\n- [corpus-domain-analysis](2026-08-31-corpus-domain-analysis.md):\n  analyses domain classifications; this tool analyses chunk kind\n  classifications with a structural rather than topical lens.\n- [corpus-chunk-profile](2026-08-31-corpus-chunk-profile.md):\n  analyses chunk-level metadata like word counts and simhash;\n  this tool analyses the kind dimension specifically.\n- [corpus-readability](2026-08-31-corpus-readability.md):\n  measures text complexity per chunk; this tool measures structural\n  content type composition.\n- [corpus-source-lifecycle](2026-08-31-corpus-source-lifecycle.md):\n  analyses source-level temporal and liveness profiles; this tool\n  analyses source-level content composition.\n- [corpus-domain-balance](2026-08-31-corpus-domain-balance.md):\n  measures domain distribution evenness; this tool measures kind\n  distribution within domains.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q08-I2",
+   "question": "What text complexity signals does the corpus chunk readability scorer measure?",
+   "doc_id": "2026-08-31-corpus-freshness-scorer",
+   "chunk_id": "2026-08-31-corpus-freshness-scorer#c002",
+   "text": "[Corpus Freshness Scorer / Solution]\nA new tool `tools/corpus/freshness_scorer.py` with three subcommands:\n\n- `score [--db PATH] [--top N] [--json]`: per-chunk freshness scores\n  ranked highest first.  Each result includes the freshness score\n  (0 to 1), age in days, source liveness, and whether the chunk has\n  version tracking.  The `--top N` flag limits output to the N\n  freshest chunks.\n- `stale [--db PATH] [--threshold F] [--json]`: chunks with freshness\n  below a configurable threshold (default 0.4).  Surfaces knowledge\n  that needs review or re-ingestion.\n- `summary [--db PATH] [--json]`: aggregate freshness statistics\n  including average, min, max, stale and fresh counts, and a\n  five-band histogram.\n- `selftest`: exercises 14 checks covering superseded exclusion,\n  score ordering, value bounds, sort order, version flag, age\n  calculation, liveness propagation, stale filtering, summary\n  structure, band totals, JSON serialisation, and empty corpus.\n\n### Freshness formula\n\nThe per-chunk freshness score is a weighted combination of four signals:",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q09-R0",
+   "question": "What are the two subcommands of the corpus health scorecard tool?",
+   "doc_id": "2026-08-31-corpus-health-scorecard",
+   "chunk_id": "2026-08-31-corpus-health-scorecard#c002",
+   "text": "[Corpus Health Scorecard / Solution]\nA new tool `tools/corpus/health_scorecard.py` with two subcommands:\n\n- `report [--db PATH] [--json]`: unified health report with an overall\n  score, source and chunk totals, and a per-dimension breakdown.  The\n  text output includes an ASCII bar chart for each dimension.  The\n  overall score is the arithmetic mean of all dimension scores.\n- `dimensions [--db PATH] [--json]`: individual dimension scores with\n  detail strings, without the overall summary.\n- `selftest`: exercises 14 checks covering report structure, acceptance\n  rate, citation verification rate, edge resolution rate, tag\n  confidence, artifact adoption rate, domain coverage, version tracking\n  coverage, overall score computation, dimension count, required keys,\n  detail strings, JSON serialisation, and empty corpus.\n\nSeven dimensions are scored:\n\n1. **acceptance**: fraction of chunks with status \"accepted\".\n2. **citation_verification**: fraction of citations marked verified.\n3. **edge_resolution**: fraction of claim edges with a non-null\n   resolution.\n4. **tag_confidence**: average score across all chunk_tags entries.\n5. **artifact_adoption**: fraction of artifacts marked implemented.\n6. **domain_coverage**: fraction of chunks with at least one\n   chunk_domains entry.\n7. **version_tracking**: fraction of chunks with at least one\n   chunk_versions entry.\n\n### Design properties",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q09-R1",
+   "question": "What are the two subcommands of the corpus health scorecard tool?",
+   "doc_id": "2026-08-31-corpus-health-scorecard",
+   "chunk_id": "2026-08-31-corpus-health-scorecard#c003",
+   "text": "[Corpus Health Scorecard / Solution]\n- **Single number**: the overall score gives one metric for corpus\n  quality at a glance.\n- **Dimensional breakdown**: each dimension is independently scored,\n  enabling targeted improvement.\n- **Graceful degradation**: dimensions that depend on optional tables\n  (chunk_tags, chunk_domains, chunk_versions) return 0 when the table\n  is absent rather than failing.\n- **ASCII visualisation**: the text report renders a 20-character bar\n  per dimension, readable in any terminal.",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q09-R2",
+   "question": "What are the two subcommands of the corpus health scorecard tool?",
+   "doc_id": "2026-08-31-corpus-health-scorecard",
+   "chunk_id": "2026-08-31-corpus-health-scorecard#c001",
+   "text": "[Corpus Health Scorecard / Problem]\nEach corpus signal table (chunks, citations, claim_edges, chunk_tags,\nchunk_versions, chunk_domains, artifacts) has its own analysis tool, but\nno tool combined these signals into a single quality summary.  Answering\n\"how healthy is the corpus?\" required running multiple tools and mentally\naggregating their outputs.",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q09-I0",
+   "question": "What are the two subcommands of the corpus health scorecard tool?",
+   "doc_id": "2026-08-30-corpus-health-oracle",
+   "chunk_id": "2026-08-30-corpus-health-oracle#c002",
+   "text": "[Corpus Health Oracle / Solution]\nA new tool `tools/corpus/health.py` with two subcommands:\n\n- `check [--db PATH] [--json]`: runs the full health check and exits 0\n  (HEALTHY) or 1 (DEFECTS). Produces a structured report covering all\n  corpus health dimensions.\n- `selftest`: exercises 18 checks covering uncited claims, unresolved\n  contradictions, embedding status, staleness distribution, artifact\n  coverage, chunk summary, and the pass/fail verdict logic.\n\n### Health dimensions checked\n\n1. **Uncited accepted claims** (section 4.4 query 1): accepted chunks\n   with `kind='claim'` and no verified citation.\n2. **Unresolved contradictions** (section 4.4 query 2): accepted chunks\n   on a `contradicts` edge with no resolution.\n3. **Embedding freshness**: generation counter match between corpus_meta\n   and corpus-vec.json. Stale vectors are a defect.\n4. **Staleness distribution**: sources grouped by liveness, with a count\n   of sources whose upstream_mtime exceeds 18 months.\n5. **Artifact implementation coverage**: total, implemented, and\n   unimplemented artifact counts with implementation rate.\n6. **Chunk status summary**: total chunks broken down by status\n   (accepted/quarantined/superseded) and by kind.\n\n### Verdict logic\n\nThe verdict is HEALTHY when all three defect conditions are clear:\n- Zero uncited accepted claims\n- Zero unresolved contradictions\n- Embedding vectors current (or not_fitted, which is not a defect)",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q09-I1",
+   "question": "What are the two subcommands of the corpus health scorecard tool?",
+   "doc_id": "2026-08-30-corpus-quality",
+   "chunk_id": "2026-08-30-corpus-quality#c002",
+   "text": "[Corpus Quality Scoring / Solution]\nA new tool `tools/corpus/quality.py` with three subcommands:\n\n- `score [--db PATH] [--status STATUS] [--source SOURCE_ID] [--min-score N]\n  [--max-score N] [--n N] [--json]`: scores individual chunks on five\n  weighted signals: word count adequacy (0.25), citation density (0.30),\n  heading structure (0.10), artifact extraction (0.15), and contradiction\n  involvement (0.20).  Filters by status, source, and score range.\n- `sources [--db PATH] [--n N] [--json]`: scores sources by aggregate\n  quality: acceptance rate, citation density, artifact density,\n  contradiction count, and word count distribution.\n- `distribution [--db PATH] [--json]`: quality score distribution across\n  the entire corpus with five-bucket histogram, mean/median/min/max,\n  and per-status breakdown.\n- `selftest`: exercises 16 checks covering all three subcommands,\n  filter combinations, sort ordering, edge cases, and JSON serialization.\n\n### Design properties\n\n- **Measurable signals only**: every quality dimension is computed from\n  existing DB columns, no subjective ratings.\n- **Weighted composite score**: the five signals combine into a 0-to-1\n  score with tunable weights.\n- **Promotion prioritisation**: scoring quarantined chunks by quality\n  identifies the best candidates for `promote.py` review.\n- **Structured output**: `--json` on every subcommand for machine\n  consumption and downstream tooling.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q09-I2",
+   "question": "What are the two subcommands of the corpus health scorecard tool?",
+   "doc_id": "2026-08-30-corpus-health-oracle",
+   "chunk_id": "2026-08-30-corpus-health-oracle#c001",
+   "text": "[Corpus Health Oracle / Problem]\nThe research corpus had individual tools for defect queries (uncited claims,\nunresolved contradictions), embedding status, staleness distribution, and\nartifact coverage, but no single command that aggregated them into a health\nverdict. The section 4.4 defect queries existed in `research.py defects`\nbut produced no pass/fail exit code and did not integrate with embedding\nfreshness, staleness, or artifact signals. A caller wanting to know whether\nthe corpus was healthy had to run multiple tools and interpret each result\nindependently.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q10-R0",
+   "question": "How does the query coverage tool use auto-generated probe queries to find chunks that no query retrieves?",
+   "doc_id": "2026-08-31-corpus-query-coverage",
+   "chunk_id": "2026-08-31-corpus-query-coverage#c002",
+   "text": "[Corpus Query Coverage / Solution]\nA new tool `tools/corpus/query_coverage.py` with three subcommands:\n\n- `probe [--db PATH] [--json]`: runs auto-generated probe queries\n  derived from corpus metadata (tags, domains, artifact names, heading\n  keywords) against the FTS5 index.  Reports each probe's match count\n  and the chunk IDs it surfaces, sorted by match count descending.\n- `uncovered [--db PATH] [--json]`: chunks that no probe query\n  matches.  These represent dead knowledge unreachable by the\n  retrieval layer.  Sorted by word count descending to surface the\n  largest unreachable chunks first.\n- `summary [--db PATH] [--json]`: coverage statistics including total\n  accepted chunks, probe count, covered and uncovered counts,\n  coverage rate, and average matches per probe.\n- `selftest`: exercises 14 checks covering probe extraction, tag\n  inclusion, FTS matching, coverage results, sort order, uncovered\n  detection, covered exclusion, uncovered ordering, summary\n  structure, coverage rate bounds, covered plus uncovered totals,\n  average matches, JSON serialisation, and empty corpus.\n\n### Probe generation\n\nProbe terms are extracted from four corpus metadata sources:\n\n1. **Tags**: the 20 most frequent tags from chunk_tags.\n2. **Domains**: up to 20 distinct domains from chunk_domains.\n3. **Artifacts**: up to 20 distinct artifact names.\n4. **Headings**: words of four or more characters from accepted\n   chunk heading paths, up to 50 unique terms.",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q10-R1",
+   "question": "How does the query coverage tool use auto-generated probe queries to find chunks that no query retrieves?",
+   "doc_id": "2026-08-31-corpus-query-coverage",
+   "chunk_id": "2026-08-31-corpus-query-coverage#c003",
+   "text": "[Corpus Query Coverage / Solution]\nThe combined set is capped at 50 probes and run against the FTS5\nindex.  Any chunk matched by at least one probe is counted as\ncovered.\n\n### Design properties\n\n- **Self-derived probes**: queries come from the corpus's own\n  metadata, testing whether the FTS5 index can reach content\n  described by the corpus's own vocabulary.\n- **Dead knowledge detection**: chunks unreachable by any probe\n  represent gaps in the retrieval layer's effective vocabulary.\n- **Size-weighted uncovered list**: sorting uncovered chunks by\n  word count surfaces the largest invisible knowledge first.\n- **Graceful degradation**: works without chunk_tags, chunk_domains,\n  or artifacts tables by deriving probes from headings alone.",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q10-R2",
+   "question": "How does the query coverage tool use auto-generated probe queries to find chunks that no query retrieves?",
+   "doc_id": "2026-08-31-corpus-query-coverage",
+   "chunk_id": "2026-08-31-corpus-query-coverage#c001",
+   "text": "[Corpus Query Coverage / Problem]\nThe FTS5 index enables keyword retrieval, but no tool measured which\nchunks are actually reachable by plausible queries.  Knowledge that\nexists in the corpus but uses terminology that no query would match\nis effectively invisible to the retrieval layer.  Identifying these\ndead zones required manually testing queries and comparing results\nagainst the full chunk inventory.",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q10-I0",
+   "question": "How does the query coverage tool use auto-generated probe queries to find chunks that no query retrieves?",
+   "doc_id": "2026-08-31-corpus-evidence-coverage",
+   "chunk_id": "2026-08-31-corpus-evidence-coverage#c001",
+   "text": "[Corpus Evidence Coverage / Problem]\nThe artifacts.evidence_path column had zero analytical queries\nanywhere in the codebase.  Every reference was an INSERT column in\ntest fixtures or ingestion code.  No tool examined what fraction of\nartifacts carry evidence paths, what file patterns those paths\nfollow, or how evidence coverage correlates with implementation\nstatus.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q10-I1",
+   "question": "How does the query coverage tool use auto-generated probe queries to find chunks that no query retrieves?",
+   "doc_id": "2026-08-30-corpus-gaps",
+   "chunk_id": "2026-08-30-corpus-gaps#c002",
+   "text": "[Corpus Gap Analysis / Solution]\nA new tool `tools/corpus/gaps.py` with three subcommands:\n\n- `topics [--db PATH] [--min-chunks N] [--json]`: checks corpus coverage\n  across 55 reference domains (sqlite, embedding, testing, security,\n  kubernetes, etc.) and classifies each as strong, adequate, thin, or\n  missing based on accepted chunk count.\n- `terms [--db PATH] [--terms TERM,...] [--json]`: searches for specific\n  user-provided terms and reports chunk counts, accepted counts, source\n  counts, and coverage level.\n- `uncovered-dirs [--db PATH] [--json]`: finds directories under the\n  source trees (work-docs, research-papers, docs/analysis) that contain\n  markdown files not yet indexed in the corpus.\n- `selftest`: exercises 16 checks covering all three subcommands, edge\n  cases, and JSON serialization.\n\n### Design properties\n\n- **Reference-based coverage**: compares against a curated domain list\n  rather than relying solely on what is already indexed.\n- **Actionable output**: each domain is labelled strong/adequate/thin/missing,\n  directly guiding where to focus ingestion effort.\n- **Custom term search**: the terms subcommand accepts arbitrary terms\n  for ad-hoc coverage checks beyond the reference set.\n- **Directory awareness**: uncovered-dirs finds on-disk markdown not\n  yet in the corpus, complementing coverage.py's file-level check.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q10-I2",
+   "question": "How does the query coverage tool use auto-generated probe queries to find chunks that no query retrieves?",
+   "doc_id": "2026-08-31-corpus-chunk-position-analysis",
+   "chunk_id": "2026-08-31-corpus-chunk-position-analysis#c001",
+   "text": "[Corpus Chunk Position Analysis / Problem]\nThe chunks.ordinal column had zero GROUP BY queries anywhere in the\ncodebase.  Every reference to ordinal was either an INSERT populating\nthe column or an ORDER BY for display sorting.  No tool revealed how\nmany chunks a typical source produces, whether chunk kinds vary by\ndocument position, or whether citation density correlates with where\na chunk sits within its source.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q11-R0",
+   "question": "What do the related and explain subcommands of the corpus recommend tool do?",
+   "doc_id": "2026-08-31-corpus-recommend",
+   "chunk_id": "2026-08-31-corpus-recommend#c002",
+   "text": "[Corpus Chunk Recommender / Solution]\nA new tool `tools/corpus/recommend.py` with two subcommands:\n\n- `related --chunk-id CID [--db PATH] [--top N] [--json]`: finds the\n  most related chunks by a weighted composite of five signals: topic\n  overlap (0.25), cosine similarity (0.25), cluster co-membership\n  (0.20), tag Jaccard overlap (0.15), and citation/edge link (0.15).\n  Returns each candidate's per-signal breakdown and composite score.\n- `explain --chunk-id CID --target TID [--db PATH] [--json]`: details\n  the relationship between two specific chunks including all signal\n  scores and any claim_edges connecting them.\n- `selftest`: exercises 14 checks.\n\n### Design properties\n\n- **Multi-signal fusion**: combines five independent analytical signals\n  into a single relevance ranking.\n- **Transparent scoring**: every recommendation includes the per-signal\n  breakdown so the user sees why a chunk ranked where it did.\n- **Superseded-chunk aware**: only active chunks participate.\n- **Resolved-edge aware**: only unresolved claim_edges count.\n- **Graceful degradation**: missing analytical data (no topic, no\n  cluster, no similarity) scores zero for that signal rather than\n  failing.",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q11-R1",
+   "question": "What do the related and explain subcommands of the corpus recommend tool do?",
+   "doc_id": "2026-08-31-corpus-recommend",
+   "chunk_id": "2026-08-31-corpus-recommend#c001",
+   "text": "[Corpus Chunk Recommender / Problem]\nEach analytical tool operates on a single signal: similarity_store\nranks by cosine distance, topic_model groups by topic, cluster_store\nby cluster membership.  There was no way to ask \"what is most related\nto chunk X across all signals at once?\" without manually querying each\ntable and mentally combining the results.",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q11-I0",
+   "question": "What do the related and explain subcommands of the corpus recommend tool do?",
+   "doc_id": "2026-08-31-corpus-diversity",
+   "chunk_id": "2026-08-31-corpus-diversity#c005",
+   "text": "[Corpus Diversity Analysis / See also]\n- [corpus-recommend](2026-08-31-corpus-recommend.md): multi-signal chunk\n  recommender; this tool measures the corpus-level distribution those\n  signals draw from.\n- [corpus-topic-model](2026-08-31-corpus-topic-model.md): produces the\n  topic assignments this tool analyses for diversity.\n- [corpus-source-impact](2026-08-31-corpus-source-impact.md): scores\n  individual sources; this tool measures their collective spread.\n- [corpus-tag-cooccurrence](2026-08-31-corpus-tag-cooccurrence.md):\n  analyses tag-to-tag structure; this tool measures tag entropy.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q11-I1",
+   "question": "What do the related and explain subcommands of the corpus recommend tool do?",
+   "doc_id": "2026-08-31-corpus-xray",
+   "chunk_id": "2026-08-31-corpus-xray#c006",
+   "text": "[Corpus Cross-Table Analysis / See also]\n- [corpus-cluster-store](2026-08-30-corpus-cluster-store.md): persists\n  chunk_clusters data this tool reads.\n- [corpus-topic-model](2026-08-31-corpus-topic-model.md): persists\n  chunk_topics and topic_terms data this tool reads.\n- [corpus-similarity-store](2026-08-30-corpus-similarity-store.md):\n  persists chunk_similarities data this tool reads.\n- [corpus-contradiction-detection](2026-08-30-corpus-contradiction-detection.md):\n  populates claim_edges with contradiction edges this tool queries.\n- [corpus-citation-graph](2026-08-31-corpus-citation-graph.md): also\n  analyses claim_edges, but per-chunk rather than per-topic/cluster.\n- [corpus-recommend](2026-08-31-corpus-recommend.md): per-chunk\n  recommender fusing the same analytical signals this tool joins.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q11-I2",
+   "question": "What do the related and explain subcommands of the corpus recommend tool do?",
+   "doc_id": "2026-08-30-corpus-summarize",
+   "chunk_id": "2026-08-30-corpus-summarize#c002",
+   "text": "[Corpus Summarize / Solution]\nA new tool `tools/corpus/summarize.py` with three subcommands:\n\n- `report [--db PATH] [--json]`: full statistical profile covering totals,\n  chunk distribution by kind and status, word count statistics, citation\n  density and verification rate, open contradictions, artifact adoption\n  rate, and source breakdowns by kind and liveness.\n- `top-sources [--db PATH] [--n N] [--json]`: ranks sources by chunk\n  count and total words, showing which documents contribute most to the\n  corpus.\n- `freshness [--db PATH] [--json]`: freshness profile showing liveness\n  distribution, superseded chunk rate, and listing stale/archived/dead\n  sources.\n- `selftest`: exercises 16 checks covering all three subcommands, result\n  shapes, edge cases, and JSON serialization.\n\n### Design properties\n\n- **Single-command dashboard**: the report subcommand is the one place to\n  see the entire corpus state.\n- **Structured output**: `--json` on every subcommand for machine\n  consumption and downstream tooling.\n- **Computed metrics**: citation density, artifact adoption rate, and\n  superseded rate are calculated, not raw counts.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q12-R0",
+   "question": "What cross-table questions did the xray tool answer that previously required manual multi-table SQL over chunk similarities and claim edges?",
+   "doc_id": "2026-08-31-corpus-xray",
+   "chunk_id": "2026-08-31-corpus-xray#c003",
+   "text": "[Corpus Cross-Table Analysis / Solution]\n- **Pure SQL joins**: no new dependencies; queries the tables that\n  cluster_store, topic_model, similarity_store, and contradict already\n  populate.\n- **Superseded-chunk aware**: only chunks with `status != 'superseded'`\n  participate.\n- **Resolved-edge aware**: only unresolved claim_edges (resolution IS\n  NULL) count as open contradictions.\n- **Table-creation safe**: creates analytical tables with IF NOT EXISTS\n  so xray works even if upstream tools have not run yet (returning\n  empty results).",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q12-R1",
+   "question": "What cross-table questions did the xray tool answer that previously required manual multi-table SQL over chunk similarities and claim edges?",
+   "doc_id": "2026-08-31-corpus-xray",
+   "chunk_id": "2026-08-31-corpus-xray#c001",
+   "text": "[Corpus Cross-Table Analysis / Problem]\nThe corpus has four analytical tables (chunk_clusters, chunk_topics,\nchunk_similarities, claim_edges) populated by separate tools, but no\ntool joins them together.  Questions like \"which clusters have the most\ncontradictions?\", \"does topic 3 span one cluster or five?\", and \"which\nchunks are both topically orphaned and semantically isolated?\" required\nmanual multi-table SQL.",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q12-R2",
+   "question": "What cross-table questions did the xray tool answer that previously required manual multi-table SQL over chunk similarities and claim edges?",
+   "doc_id": "2026-08-31-corpus-xray",
+   "chunk_id": "2026-08-31-corpus-xray#c002",
+   "text": "[Corpus Cross-Table Analysis / Solution]\nA new tool `tools/corpus/xray.py` with four subcommands:\n\n- `topic-clusters [--db PATH] [--topic N] [--json]`: shows which\n  clusters each topic spans.  Without `--topic`, lists all topics with\n  their cluster count and spread (clusters/chunks ratio).  With\n  `--topic`, drills into one topic showing per-cluster member counts\n  and cluster top terms.\n- `cluster-health [--db PATH] [--cluster N] [--json]`: measures\n  intra-cluster contradiction count and density, total edge count,\n  and average/min/max cosine similarity.  Sorted by contradiction\n  density descending to surface the most contested clusters first.\n- `hotspots [--db PATH] [--top N] [--json]`: ranks topics by\n  open-contradiction density (contradictions per chunk).  Shows the\n  top terms for each topic so the hotspot is immediately nameable.\n- `isolation [--db PATH] [--top N] [--json]`: finds chunks with low\n  maximum similarity and small topic membership.  Computes an\n  isolation score ((1 - max_similarity) / topic_size) to surface\n  chunks that are both semantically distant from all neighbours and\n  topically marginal.\n- `selftest`: exercises 14 checks.\n\n### Design properties",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q12-I0",
+   "question": "What cross-table questions did the xray tool answer that previously required manual multi-table SQL over chunk similarities and claim edges?",
+   "doc_id": "2026-08-31-corpus-citation-graph",
+   "chunk_id": "2026-08-31-corpus-citation-graph#c001",
+   "text": "[Corpus Citation Graph / Problem]\nThe `claim_edges` table records pairwise relationships between chunks\n(supports, contradicts, supersedes, duplicates, refines), but there was\nno tool to analyze the citation network as a whole.  Questions like\n\"which chunk is most cited?\", \"which chunks cite the most others?\", and\n\"which claim chunks have no connections at all?\" required manual SQL\nqueries against the edge table.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q12-I1",
+   "question": "What cross-table questions did the xray tool answer that previously required manual multi-table SQL over chunk similarities and claim edges?",
+   "doc_id": "2026-08-30-corpus-lineage",
+   "chunk_id": "2026-08-30-corpus-lineage#c001",
+   "text": "[Corpus Lineage / Problem]\nUnderstanding how a chunk arrived in the corpus, what it connects to, and\nwhether anything depends on it required manual SQL across four tables\n(citations, claim_edges, artifacts, sources).  No single command traced the\nfull provenance chain from a chunk back to its source and forward to its\ndownstream consumers.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q12-I2",
+   "question": "What cross-table questions did the xray tool answer that previously required manual multi-table SQL over chunk similarities and claim edges?",
+   "doc_id": "2026-08-31-corpus-similarity-analysis",
+   "chunk_id": "2026-08-31-corpus-similarity-analysis#c001",
+   "text": "[Corpus Similarity Analysis / Problem]\nThe chunk_similarities, chunk_outliers, and chunk_clusters tables store\ncomputed relatedness signals, but no tool analysed these signals\ntogether.  Finding the similarity score distribution, the most similar\nchunk pairs, which outliers are in which kinds, or how cohesive each\ncluster is required manual queries across three tables.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q13-R0",
+   "question": "Why was a dashboard tool needed to get a corpus overview instead of running individual tools?",
+   "doc_id": "2026-08-31-corpus-dashboard",
+   "chunk_id": "2026-08-31-corpus-dashboard#c001",
+   "text": "[Corpus Dashboard / Problem]\nGetting a corpus overview required running many individual tools:\nchunk counts from validate, edge stats from contradict, tag coverage\nfrom tag_store, topic coverage from topic_model, and so on.  No single\ncommand aggregated key metrics into one report.",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q13-R1",
+   "question": "Why was a dashboard tool needed to get a corpus overview instead of running individual tools?",
+   "doc_id": "2026-08-31-corpus-dashboard",
+   "chunk_id": "2026-08-31-corpus-dashboard#c002",
+   "text": "[Corpus Dashboard / Solution]\nA new tool `tools/corpus/dashboard.py` with three subcommands:\n\n- `overview [--db PATH] [--json]`: chunk counts by status (active,\n  superseded, accepted, quarantined) and kind, plus source totals and\n  liveness counts.\n- `health [--db PATH] [--json]`: edge statistics (total, unresolved,\n  open contradictions, by type), citation and artifact counts, and\n  orphan claim chunk detection (accepted claims with no citations or\n  edges).\n- `signals [--db PATH] [--json]`: analytical signal coverage across\n  topics, clusters, tags, similarities, and domains.  For each signal\n  reports chunks covered, distinct label count, and coverage ratio.\n- `selftest`: exercises 14 checks covering all three subcommands,\n  kind breakdowns, edge type breakdowns, orphan detection, signal\n  coverage, superseded-chunk exclusion, missing analytical tables, and\n  JSON serialisation.\n\n### Design properties\n\n- **Single-command overview**: answers \"what does the corpus look like?\"\n  without running five separate tools.\n- **Missing-table resilient**: each signal degrades to zero coverage\n  when its analytical table has not been created yet.\n- **Orphan detection**: finds accepted claim chunks with no citations\n  or edges in any direction.\n- **Superseded-chunk aware**: overview and signal coverage count only\n  active chunks.",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q13-I0",
+   "question": "Why was a dashboard tool needed to get a corpus overview instead of running individual tools?",
+   "doc_id": "2026-08-31-corpus-chunk-profile",
+   "chunk_id": "2026-08-31-corpus-chunk-profile#c001",
+   "text": "[Corpus Chunk Profile / Problem]\nGetting a complete picture of a single chunk required running multiple\ntools: lineage for provenance, recommend for analytical signals,\ndashboard for aggregate context.  No single command assembled the full\ndossier for one chunk, and comparing two chunks meant running each\ntool twice and mentally collating the results.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q13-I1",
+   "question": "Why was a dashboard tool needed to get a corpus overview instead of running individual tools?",
+   "doc_id": "2026-08-31-corpus-health-scorecard",
+   "chunk_id": "2026-08-31-corpus-health-scorecard#c001",
+   "text": "[Corpus Health Scorecard / Problem]\nEach corpus signal table (chunks, citations, claim_edges, chunk_tags,\nchunk_versions, chunk_domains, artifacts) has its own analysis tool, but\nno tool combined these signals into a single quality summary.  Answering\n\"how healthy is the corpus?\" required running multiple tools and mentally\naggregating their outputs.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q13-I2",
+   "question": "Why was a dashboard tool needed to get a corpus overview instead of running individual tools?",
+   "doc_id": "2026-08-30-corpus-summarize",
+   "chunk_id": "2026-08-30-corpus-summarize#c002",
+   "text": "[Corpus Summarize / Solution]\nA new tool `tools/corpus/summarize.py` with three subcommands:\n\n- `report [--db PATH] [--json]`: full statistical profile covering totals,\n  chunk distribution by kind and status, word count statistics, citation\n  density and verification rate, open contradictions, artifact adoption\n  rate, and source breakdowns by kind and liveness.\n- `top-sources [--db PATH] [--n N] [--json]`: ranks sources by chunk\n  count and total words, showing which documents contribute most to the\n  corpus.\n- `freshness [--db PATH] [--json]`: freshness profile showing liveness\n  distribution, superseded chunk rate, and listing stale/archived/dead\n  sources.\n- `selftest`: exercises 16 checks covering all three subcommands, result\n  shapes, edge cases, and JSON serialization.\n\n### Design properties\n\n- **Single-command dashboard**: the report subcommand is the one place to\n  see the entire corpus state.\n- **Structured output**: `--json` on every subcommand for machine\n  consumption and downstream tooling.\n- **Computed metrics**: citation density, artifact adoption rate, and\n  superseded rate are calculated, not raw counts.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q14-R0",
+   "question": "What does the version churn tool measure about the temporal velocity of corpus changes, and what patterns does it distinguish?",
+   "doc_id": "2026-08-31-corpus-version-churn",
+   "chunk_id": "2026-08-31-corpus-version-churn#c001",
+   "text": "[Corpus Version Churn Rate / Problem]\nThe chunk evolution tool counts revisions per chunk, but no tool\nmeasured the temporal velocity of those changes.  A corpus with\nsteady monthly revisions behaves differently from one with bursts\nof activity followed by quiet periods.  Identifying churn hotspots\nand trend direction required manually grouping version timestamps\nby period and computing rates.",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q14-R1",
+   "question": "What does the version churn tool measure about the temporal velocity of corpus changes, and what patterns does it distinguish?",
+   "doc_id": "2026-08-31-corpus-version-churn",
+   "chunk_id": "2026-08-31-corpus-version-churn#c002",
+   "text": "[Corpus Version Churn Rate / Solution]\nA new tool `tools/corpus/version_churn.py` with three subcommands:\n\n- `rate [--db PATH] [--json]`: per-month revision counts with\n  month-over-month delta and trend direction (accelerating, stable,\n  or decelerating).  Sorted chronologically.\n- `hotspots [--db PATH] [--top N] [--json]`: chunks with the\n  highest churn rate measured as revisions per day of active life.\n  Only multi-revision chunks qualify.  Sorted by churn rate\n  descending to surface the most volatile content first.\n- `summary [--db PATH] [--json]`: aggregate churn statistics\n  including total revisions, versioned and multi-revision chunk\n  counts, months active, mean monthly revisions, peak month, and\n  latest trend direction.\n- `selftest`: exercises 14 checks covering monthly enumeration,\n  chronological sort, positive revisions, delta correctness, trend\n  validity, hotspot detection, revision counts, positive rates,\n  rate ordering, single-revision exclusion, summary structure,\n  peak identification, JSON serialisation, and empty corpus.\n\n### Churn metrics\n\nTwo complementary views of revision velocity:",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q14-I0",
+   "question": "What does the version churn tool measure about the temporal velocity of corpus changes, and what patterns does it distinguish?",
+   "doc_id": "2026-08-31-corpus-chunk-evolution",
+   "chunk_id": "2026-08-31-corpus-chunk-evolution#c006",
+   "text": "[Corpus Chunk Evolution / See also]\n- [corpus-citation-analysis](2026-08-31-corpus-citation-analysis.md):\n  analyses citation patterns; this tool analyses content change\n  patterns over time.\n- [corpus-chunk-versions](2026-08-30-corpus-chunk-versions.md):\n  the versioning infrastructure this tool reads from.\n- [corpus-chunk-profile](2026-08-31-corpus-chunk-profile.md):\n  assembles a chunk dossier; this tool traces a chunk's edit lineage.\n- [corpus-dashboard](2026-08-31-corpus-dashboard.md): reports corpus\n  totals; this tool reports revision dynamics.\n\n- [corpus-artifact-adoption](2026-08-31-corpus-artifact-adoption.md):\n  analyses technology artifact patterns; this tool analyses content\n  revision patterns.\n- [corpus-version-churn](2026-08-31-corpus-version-churn.md):\n  measures temporal revision velocity and acceleration; this tool\n  counts revisions and measures content drift.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q14-I1",
+   "question": "What does the version churn tool measure about the temporal velocity of corpus changes, and what patterns does it distinguish?",
+   "doc_id": "2026-08-31-corpus-version-timeline",
+   "chunk_id": "2026-08-31-corpus-version-timeline#c006",
+   "text": "[Corpus Version Timeline / See also]\n- [corpus-temporal-distribution](2026-08-31-corpus-temporal-distribution.md):\n  analyses ingestion, publication, and fetch timestamps; this tool\n  analyses the version snapshot timestamp.\n- [corpus-chunk-position-analysis](2026-08-31-corpus-chunk-position-analysis.md):\n  analyses chunk ordinal patterns; this tool analyses how chunks\n  evolve through versions over time.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q14-I2",
+   "question": "What does the version churn tool measure about the temporal velocity of corpus changes, and what patterns does it distinguish?",
+   "doc_id": "2026-08-31-corpus-version-timeline",
+   "chunk_id": "2026-08-31-corpus-version-timeline#c002",
+   "text": "[Corpus Version Timeline / Solution]\nA new tool `tools/corpus/version_timeline.py` with four subcommands:\n\n- `timeline [--db PATH] [--json]`: distribution of version snapshot\n  times by month, with count and share per month.\n- `depth [--db PATH] [--json]`: distribution of max version depth\n  per chunk, bucketed into 1, 2-3, 4-5, 6-10, >10.\n- `churn [--db PATH] [--json]`: version churn per month showing\n  total versions created and distinct chunks versioned, revealing\n  whether versioning is concentrated or spread across the corpus.\n- `summary [--db PATH] [--json]`: aggregate version statistics\n  including total versions, distinct chunks, distinct months,\n  snapshot range, mean versions per chunk, and max version depth.\n- `selftest`: exercises 14 checks covering timeline entry count,\n  monthly counts, share summation, depth distribution entries,\n  bucket counts, churn entries, churn distinct chunks, churn\n  version counts, summary totals, mean versions per chunk, JSON\n  serialisation, and empty corpus.\n\n### Design properties",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q15-R0",
+   "question": "What language analyses were missing before the language distribution tool, such as per-source diversity and language-kind correlations?",
+   "doc_id": "2026-08-31-corpus-language-distribution",
+   "chunk_id": "2026-08-31-corpus-language-distribution#c001",
+   "text": "[Corpus Language Distribution / Problem]\nThe chunks table stores a lang column for every chunk, encoding the\nprogramming or natural language of each piece of content.  No tool\nanalysed the language distribution, per-source language diversity, or\nlanguage-kind correlations.  Identifying multilingual sources,\nfinding chunks with missing language tags, or understanding which\nkinds of content carry which languages required manual queries.",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q15-R1",
+   "question": "What language analyses were missing before the language distribution tool, such as per-source diversity and language-kind correlations?",
+   "doc_id": "2026-08-31-corpus-language-distribution",
+   "chunk_id": "2026-08-31-corpus-language-distribution#c002",
+   "text": "[Corpus Language Distribution / Solution]\nA new tool `tools/corpus/language_distribution.py` with four\nsubcommands:\n\n- `distribution [--db PATH] [--json]`: language distribution across\n  accepted chunks, showing count, share, and total word count per\n  language.\n- `per-source [--db PATH] [--json]`: language diversity per source\n  including chunk count, distinct languages, dominant language and\n  its share.  Sorted by distinct language count descending to surface\n  the most linguistically diverse sources first.\n- `per-kind [--db PATH] [--json]`: language distribution per chunk\n  kind, showing which languages appear in each content type.\n- `summary [--db PATH] [--json]`: aggregate language statistics\n  including total chunks, distinct languages, unset count and rate,\n  dominant language, source count, and multilingual source count.\n- `selftest`: exercises 14 checks covering distribution entries,\n  dominant language, share summation, unset presence, per-source\n  counts, distinct language counts, sort order, per-kind entries,\n  code kind languages, summary totals, unset and multilingual\n  counts, JSON serialisation, and empty corpus.\n\n### Design properties",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q15-R2",
+   "question": "What language analyses were missing before the language distribution tool, such as per-source diversity and language-kind correlations?",
+   "doc_id": "2026-08-31-corpus-language-distribution",
+   "chunk_id": "2026-08-31-corpus-language-distribution#c003",
+   "text": "[Corpus Language Distribution / Solution]\n- **Unset tracking**: chunks with NULL lang are reported as\n  \"(unset)\", making missing-tag prevalence visible.\n- **Per-source diversity**: distinct language count and dominant\n  share reveal whether sources are monolingual or mixed.\n- **Kind correlation**: per-kind breakdown shows which content\n  types carry which languages (e.g. code chunks with python/sql).\n- **Accepted-only scope**: analyses only accepted chunks.",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q15-I0",
+   "question": "What language analyses were missing before the language distribution tool, such as per-source diversity and language-kind correlations?",
+   "doc_id": "2026-08-31-corpus-supersession-analysis",
+   "chunk_id": "2026-08-31-corpus-supersession-analysis#c001",
+   "text": "[Corpus Supersession Analysis / Problem]\nThe sources.supersedes column had only chain-walking queries\n(source_chain.py) but no statistical distribution analysis.  No tool\nexamined supersession population rates, chain depth distributions, or\nhow supersession varies by source kind.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q15-I1",
+   "question": "What language analyses were missing before the language distribution tool, such as per-source diversity and language-kind correlations?",
+   "doc_id": "2026-08-31-corpus-diversity",
+   "chunk_id": "2026-08-31-corpus-diversity#c001",
+   "text": "[Corpus Diversity Analysis / Problem]\nNo single command answered \"how evenly is the corpus spread across topics\nand sources?\"  Measuring concentration required ad-hoc SQL joining\nchunk_topics, sources, and chunk_tags, and there was no standard way to\ndetect topics dominated by a single source or to find underpopulated\ntopic areas.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q15-I2",
+   "question": "What language analyses were missing before the language distribution tool, such as per-source diversity and language-kind correlations?",
+   "doc_id": "2026-08-31-corpus-publisher-license-distribution",
+   "chunk_id": "2026-08-31-corpus-publisher-license-distribution#c006",
+   "text": "[Corpus Publisher and License Distribution / See also]\n- [corpus-source-size-distribution](2026-08-31-corpus-source-size-distribution.md):\n  analyses source byte-count patterns; this tool analyses source\n  metadata dimensions (publisher, license).\n- [corpus-domain-analysis](2026-08-30-corpus-domain-analysis.md):\n  analyses domain coverage across sources; publisher distribution\n  is a complementary source diversity dimension.\n- [corpus-health-scorecard](2026-08-31-corpus-health-scorecard.md):\n  aggregates corpus health metrics; publisher concentration and\n  license diversity are complementary quality signals.\n- [corpus-source-provenance](2026-08-31-corpus-source-provenance.md):\n  scores individual source provenance including license verdict;\n  this tool analyses the aggregate license distribution.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q16-R0",
+   "question": "What export filters were missing from the batch export tool, and what computed data never surfaced in export records?",
+   "doc_id": "2026-08-30-corpus-batch-export",
+   "chunk_id": "2026-08-30-corpus-batch-export#c001",
+   "text": "[Corpus Batch Export / Problem]\nThe export tool supports filtering by chunk status and kind, but lacks\nfilters for source kind, tags, and date ranges.  Downstream consumers\n(dashboards, audits, cross-tool pipelines) need faceted export to\navoid post-processing the full dump.  Tags from the chunk_tags table\nare computed and persisted but never surfaced in export records.",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q16-R1",
+   "question": "What export filters were missing from the batch export tool, and what computed data never surfaced in export records?",
+   "doc_id": "2026-08-30-corpus-batch-export",
+   "chunk_id": "2026-08-30-corpus-batch-export#c002",
+   "text": "[Corpus Batch Export / Solution]\nExtended `tools/corpus/export.py` with four new filters and tag\ninclusion in the `full` export command:\n\n### New filters\n\n- `--source-kind KIND`: filter by source type (e.g. `paper`, `local_md`,\n  `repo`).  Comma-separated for multiple kinds.\n- `--tag TAG`: filter by tag from the `chunk_tags` table.  Comma-separated\n  for multiple tags (OR logic).\n- `--since DATE`: include chunks ingested on or after an ISO date.\n- `--before DATE`: include chunks ingested before an ISO date.\n- `--out FILE`: write output to a file instead of stdout.\n\nAll filters compose with the existing `--status` and `--kind` filters.\n\n### Tags in export records\n\nEvery exported chunk record now includes a `tags` field: a list of\n`{tag, score}` objects sorted by score descending, drawn from the\n`chunk_tags` table.  Chunks with no tags get an empty list.\n\n### Design properties\n\n- **Composable**: all six filters (status, kind, source-kind, tag,\n  since, before) can be combined in a single query.\n- **Backward-compatible**: existing CLI invocations produce identical\n  output except for the added `tags` field in records.\n- **SQL-level filtering**: joins and WHERE clauses push filtering into\n  SQLite rather than post-filtering in Python.",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q16-I0",
+   "question": "What export filters were missing from the batch export tool, and what computed data never surfaced in export records?",
+   "doc_id": "2026-08-30-corpus-export",
+   "chunk_id": "2026-08-30-corpus-export#c002",
+   "text": "[Corpus Export / Solution]\nA new tool `tools/corpus/export.py` with six subcommands:\n\n- `full [--db PATH] [--format json|jsonl] [--status STATUS] [--kind KIND]`:\n  exports all chunks as section 7.2 records with source provenance, citations,\n  contradictions, artifacts, staleness, and trust. Supports filtering by status\n  and kind.\n- `defects [--db PATH] [--format json|jsonl]`: exports uncited accepted claims\n  and unresolved contradictions with counts.\n- `artifacts [--db PATH] [--implemented] [--format json|jsonl]`: exports all\n  artifacts with their source chunks and trust flags. `--implemented` filters\n  to artifacts with disk evidence.\n- `sources [--db PATH] [--format json|jsonl]`: exports all sources with\n  staleness verdicts and per-source chunk counts.\n- `summary [--db PATH] [--json]`: produces a concise corpus overview with\n  counts for sources, chunks, citations, defects, and artifacts.\n- `selftest`: exercises 19 checks covering all export modes, filters,\n  output formats, and field presence.\n\n### Export shape\n\nEach full export record matches the section 7.2 shape:",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q16-I1",
+   "question": "What export filters were missing from the batch export tool, and what computed data never surfaced in export records?",
+   "doc_id": "2026-08-30-corpus-export",
+   "chunk_id": "2026-08-30-corpus-export#c001",
+   "text": "[Corpus Export / Problem]\nThe research corpus had tools for ingestion, querying, and health checking, but\nno way to serialize the full corpus or filtered subsets for external analysis,\ndashboards, or consumption by other tools. An operator wanting to analyze corpus\ndata outside the CLI had to write ad-hoc SQL queries against the database.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q16-I2",
+   "question": "What export filters were missing from the batch export tool, and what computed data never surfaced in export records?",
+   "doc_id": "2026-08-30-corpus-export",
+   "chunk_id": "2026-08-30-corpus-export#c003",
+   "text": "[Corpus Export / Solution]\n```json\n{\n  \"chunk_id\": \"c9f2...\",\n  \"text\": \"...\",\n  \"kind\": \"prose\",\n  \"status\": \"accepted\",\n  \"word_count\": 42,\n  \"source\": {\"source_id\": \"...\", \"uri\": \"...\", \"kind\": \"local_md\",\n             \"license_verdict\": \"vendor\", \"liveness\": \"live\", ...},\n  \"citations\": [...],\n  \"contradicted_by\": [...],\n  \"artifacts\": [...],\n  \"staleness\": {\"verdict\": \"fresh\", \"age_days\": 4, \"reasons\": []},\n  \"trust\": \"trusted\"\n}\n```\n\n### Design properties\n\n- **Filterable**: status and kind filters on full export, implemented filter on\n  artifacts, combinable for precise subsets.\n- **Two output formats**: JSON (array) for structured consumption, JSONL\n  (one record per line) for streaming and line-oriented tools.\n- **Summary mode**: human-readable overview without the full export weight.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q17-R0",
+   "question": "Which three timestamp columns had zero GROUP BY queries anywhere in the codebase, and what does the temporal distribution tool reveal?",
+   "doc_id": "2026-08-31-corpus-temporal-distribution",
+   "chunk_id": "2026-08-31-corpus-temporal-distribution#c001",
+   "text": "[Corpus Temporal Distribution / Problem]\nThe timestamp columns ingested_utc (chunks), published_utc (sources),\nand fetched_utc (sources) had zero GROUP BY queries anywhere in the\ncodebase.  Understanding when content was created, when it was\nfetched, and when it was ingested required manual single-row\ninspection.  No tool revealed ingestion cadence, publication era\ndistribution, or the lag between publication and fetch.",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q17-R1",
+   "question": "Which three timestamp columns had zero GROUP BY queries anywhere in the codebase, and what does the temporal distribution tool reveal?",
+   "doc_id": "2026-08-31-corpus-temporal-distribution",
+   "chunk_id": "2026-08-31-corpus-temporal-distribution#c002",
+   "text": "[Corpus Temporal Distribution / Solution]\nA new tool `tools/corpus/temporal_distribution.py` with four\nsubcommands:\n\n- `ingestion [--db PATH] [--json]`: distribution of chunk ingestion\n  times by month, showing count and share per month.\n- `publication [--db PATH] [--json]`: distribution of source\n  publication dates by month with count and share.\n- `fetch-lag [--db PATH] [--json]`: distribution of lag between\n  publication and fetch times in buckets (same-day, 1-7d, 8-30d,\n  31-90d, >90d, negative).\n- `summary [--db PATH] [--json]`: aggregate temporal statistics\n  including ingested range with distinct months, publication range\n  with population count, fetch range, and fetch lag mean/max/min.\n- `selftest`: exercises 14 checks covering ingestion entries,\n  distinct months, share summation, publication entries, publication\n  month count, fetch-lag entries, bucket presence, lag share\n  summation, summary chunk/source counts, ingestion range,\n  publication range, fetch lag stats, JSON serialisation, and\n  empty corpus.\n\n### Design properties",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q17-I0",
+   "question": "Which three timestamp columns had zero GROUP BY queries anywhere in the codebase, and what does the temporal distribution tool reveal?",
+   "doc_id": "2026-08-31-corpus-version-timeline",
+   "chunk_id": "2026-08-31-corpus-version-timeline#c001",
+   "text": "[Corpus Version Timeline / Problem]\nThe chunk_versions.snapshot_utc column had no temporal distribution\nanalysis.  No tool examined when version snapshots are taken, how\nversioning activity varies over time, or the relationship between\nversion depth and snapshot timing.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q17-I1",
+   "question": "Which three timestamp columns had zero GROUP BY queries anywhere in the codebase, and what does the temporal distribution tool reveal?",
+   "doc_id": "2026-08-31-corpus-classification-timeline",
+   "chunk_id": "2026-08-31-corpus-classification-timeline#c001",
+   "text": "[Corpus Classification Timeline / Problem]\nThe chunk_domains.classified_utc column had no temporal distribution\nanalysis.  Existing tools (domain_analysis, domain_balance,\ndomain_score_distribution) analyse domain membership and scores but\nnever when classification activity happens over time, how it varies\nby domain, or how classification scores evolve across periods.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q17-I2",
+   "question": "Which three timestamp columns had zero GROUP BY queries anywhere in the codebase, and what does the temporal distribution tool reveal?",
+   "doc_id": "2026-08-31-corpus-edge-detection-timeline",
+   "chunk_id": "2026-08-31-corpus-edge-detection-timeline#c001",
+   "text": "[Corpus Edge Detection Timeline / Problem]\nThe claim_edges.detected_utc column had zero analytical queries\nanywhere in the codebase.  All references were INSERT values in\ningestion and test code.  No tool examined when edges were\ndiscovered, whether detection activity varies by edge type, or how\nlong edges take to resolve after detection.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q18-R0",
+   "question": "What naming collision forced renaming cache2cache to row-reuse, and what does ADR-0018 rule about the cache2cache term?",
+   "doc_id": "2026-07-31-research-corpus-and-cache",
+   "chunk_id": "2026-07-31-research-corpus-and-cache#c031",
+   "text": "[Research corpus and cache (row-reuse, cache2action) / 5. row-reuse and cache2action]\nThe operator named these. They are not established terms, so the definitions\nbelow are an interpretation offered for approval, not a report of prior art.\n\n### 5.1 row-reuse\n\n> Implemented in `tools/corpus/rowreuse.py`; spec at `docs/specs/2026-08-30-corpus-row-reuse.md`.\n\n**Definition.** A retrieval that answers a question entirely from stored corpus\nrows, and whose output is itself written back as a corpus row with edges to every\nrow it consumed. The cache both serves and grows. The unit of reuse is a\nsynthesised answer, so the second time a question is asked it costs one lookup\nrather than a re-synthesis over N chunks.\n\n**What it buys over reading a file.** Reading a file gives one document. A\nrow-reuse answer is a synthesis across sources with `[S#]` provenance already\nattached, deduplicated against previous answers by `norm_sha256`, and carrying\n`claim_edges` so a later contradiction invalidates it automatically. A file\ncannot be invalidated by a query; a row can.",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q18-R1",
+   "question": "What naming collision forced renaming cache2cache to row-reuse, and what does ADR-0018 rule about the cache2cache term?",
+   "doc_id": "2026-07-31-research-corpus-and-cache",
+   "chunk_id": "2026-07-31-research-corpus-and-cache#c036",
+   "text": "[Research corpus and cache (row-reuse, cache2action) / 5. row-reuse and cache2action]\nMitigations, load-bearing rather than advisory. cache2action never auto-executes;\nit returns a proposal that passes through the same permission boundary as any\nother command, which under the global contract means the operator approves\nanything destructive. `artifacts` rows sourced from\n`license_verdict='index_only'` material are marked untrusted and are\ndisplay-only. And `evidence_path` must be re-resolvable, so a step whose proof no\nlonger exists degrades to a suggestion rather than an instruction.\n\n### 5.3 The relationship between the two\n\nrow-reuse is read-mostly and its worst outcome is a confidently stale answer.\ncache2action is write-capable and its worst outcome is a destructive command with\ngood provenance. They deserve different gates, and collapsing them into one RAG\nfeature is the design mistake to avoid. The schema separates them already:\nrow-reuse reads `chunks` plus `citations`, cache2action reads `artifacts` plus\n`evidence_path`.\n\n---",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q18-R2",
+   "question": "What naming collision forced renaming cache2cache to row-reuse, and what does ADR-0018 rule about the cache2cache term?",
+   "doc_id": "2026-07-31-research-corpus-and-cache",
+   "chunk_id": "2026-07-31-research-corpus-and-cache#c032",
+   "text": "[Research corpus and cache (row-reuse, cache2action) / 5. row-reuse and cache2action]\n**Worked example from tonight.** The question of which named external sources may\nbe vendored was answered in section 3 by 13 `gh api` calls, 13 license\nresolutions, and 5 raw LICENSE reads. That work is now a table. Under\nrow-reuse, section 3.3 verdicts become `chunks` rows with `kind='claim'`, each\ncarrying a `citations` row pointing at the exact API path and the fetch date in\n`sources.license_evidence`. The next session asking whether developer-roadmap can\nbe vendored gets `blocked` plus the evidence in one query, instead of re-deriving\nit and quite possibly stopping at the misleading GitHub `NOASSERTION` label,\nwhich is the failure this session nearly made.",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q18-I0",
+   "question": "What naming collision forced renaming cache2cache to row-reuse, and what does ADR-0018 rule about the cache2cache term?",
+   "doc_id": "2026-08-30-corpus-row-reuse",
+   "chunk_id": "2026-08-30-corpus-row-reuse#c006",
+   "text": "[Corpus Row-Reuse Write-Back / Scope]\n- `tools/corpus/rowreuse.py`: new tool\n- `docs/specs/2026-08-30-corpus-row-reuse.md`: this spec",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q19-R0",
+   "question": "Which stage of the ingestion pipeline does the citation gate tool implement?",
+   "doc_id": "2026-08-30-corpus-cite-gate",
+   "chunk_id": "2026-08-30-corpus-cite-gate#c002",
+   "text": "[Corpus Citation Gate / Solution]\nA new tool `tools/corpus/cite_gate.py` implementing the stage 4\ncitation gate:\n\n- `scan [--db PATH] [--json]`: examines all accepted claim chunks for\n  citations.  Checks three sources: existing `citations` table rows,\n  `[S#]` reference tags in text, and bare URLs.  Also detects DOI\n  patterns.  Reports each claim as cited or uncited.\n- `apply [--db PATH] [--dry-run]`: creates `citations` table entries\n  for extracted references (tags, URLs, DOIs), then quarantines any\n  claim chunk that still has zero citations with\n  `status_reason='uncited'`.  Idempotent: re-running skips existing\n  citation IDs and already-quarantined chunks.\n- `backlog [--db PATH] [--json]`: lists all quarantined uncited claims\n  with text preview and source title, providing the visible queue the\n  spec demands.\n- `stats [--db PATH] [--json]`: reports total claims, accepted count,\n  quarantined uncited count, total citations, cited chunk count, and\n  citation rate.\n- `selftest`: exercises 18 checks covering extraction accuracy (tags,\n  URLs, DOIs), scan correctness, apply behavior (dry run vs real),\n  quarantine enforcement, backlog query, idempotency, stats structure,\n  and edge cases.\n\n### Citation extraction\n\nThree detectors, following the spec:",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q19-R1",
+   "question": "Which stage of the ingestion pipeline does the citation gate tool implement?",
+   "doc_id": "2026-08-30-corpus-cite-gate",
+   "chunk_id": "2026-08-30-corpus-cite-gate#c001",
+   "text": "[Corpus Citation Gate / Problem]\nThe ingestion pipeline spec (section 6, stage 4) requires that every\nchunk with `kind='claim'` carry at least one citation.  Without\nenforcement, 57.7% of files in the local corpus lack any `[S#]`\nreference, and that defect is invisible until a retrieval caller\ndiscovers it.  Quarantining uncited claims converts an invisible defect\nrate into a visible backlog.",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q19-R2",
+   "question": "Which stage of the ingestion pipeline does the citation gate tool implement?",
+   "doc_id": "2026-08-30-corpus-cite-gate",
+   "chunk_id": "2026-08-30-corpus-cite-gate#c003",
+   "text": "[Corpus Citation Gate / Solution]\n1. **`[S#]` tags**: regex `\\[S\\d+\\]` captures numbered references.\n2. **DOI patterns**: `10.\\d{4,}/\\S+` with automatic `https://doi.org/`\n   prefix.\n3. **Bare URLs**: `https?://` patterns, deduplicated against DOIs\n   already found.\n\n### Design properties\n\n- **Quarantine, not delete**: uncited claims get\n  `status='quarantined'`, never removed.  Reversible via promote.py.\n- **Idempotent**: citation IDs derived from chunk_id + URI, so\n  re-running never duplicates.\n- **Existing citations respected**: chunks with pre-existing\n  `citations` table rows are recognized as cited without re-extraction.\n- **Composable**: the backlog query feeds promote.py for triage.",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q19-I0",
+   "question": "Which stage of the ingestion pipeline does the citation gate tool implement?",
+   "doc_id": "2026-07-31-research-corpus-and-cache",
+   "chunk_id": "2026-07-31-research-corpus-and-cache#c039",
+   "text": "[Research corpus and cache (row-reuse, cache2action) / 6. Ingestion pipeline enforcing the synthesis standard]\n> **Quarantine triage implemented:** `tools/corpus/promote.py` (2026-08-30). Spec: `docs/specs/2026-08-30-corpus-promote.md`.\n> **Quality review sampling:** `tools/corpus/sample.py` (2026-08-30). Spec: `docs/specs/2026-08-30-corpus-sample.md`.\n> **Quality scoring:** `tools/corpus/quality.py` (2026-08-30). Spec: `docs/specs/2026-08-30-corpus-quality.md`.\n> **Kind reclassification:** `tools/corpus/reclassify.py` (2026-08-30). Spec: `docs/specs/2026-08-30-corpus-reclassify.md`.\n> **Deduplication:** `tools/corpus/dedup.py` (2026-08-30). Spec: `docs/specs/2026-08-30-corpus-dedup.md`.\n\n**Stage 4, citation gate.** The enforcement of directive 2. A chunk with\n`kind='claim'` must produce at least one `citations` row. `[S#]` tags resolve\nagainst the source own reference section; bare URLs count; a claim with neither\nis **quarantined**, neither accepted nor discarded, with\n`status_reason='uncited'`. Quarantined rows are invisible to retrieval by default\nand visible to the backlog query. On the local corpus this would quarantine a\nlarge share of the 205 uncited files on first run, which is the correct outcome:\nit converts an invisible 57.7% defect into a visible queue.\n\n> **Citation gate implemented:** `tools/corpus/cite_gate.py` (2026-08-30). Spec: `docs/specs/2026-08-30-corpus-cite-gate.md`.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q19-I1",
+   "question": "Which stage of the ingestion pipeline does the citation gate tool implement?",
+   "doc_id": "2026-08-30-corpus-license-gate",
+   "chunk_id": "2026-08-30-corpus-license-gate#c007",
+   "text": "[Corpus License Gate / Non-goals]\n- Fetching or cloning external repositories (separate from gating).\n- Automatic LICENSE file reading (the gate takes pre-resolved SPDX).\n- Ingestion pipeline orchestration (the gate is one stage, not the\n  pipeline).",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q19-I2",
+   "question": "Which stage of the ingestion pipeline does the citation gate tool implement?",
+   "doc_id": "2026-07-31-research-corpus-and-cache",
+   "chunk_id": "2026-07-31-research-corpus-and-cache#c038",
+   "text": "[Research corpus and cache (row-reuse, cache2action) / 6. Ingestion pipeline enforcing the synthesis standard]\n**Stage 1, license and liveness gate.** Before content is read, resolve the\nlicense from the actual LICENSE text and record `license_evidence`. A\n`license_verdict='blocked'` source is refused by canonical hostname. A GitHub\n`NOASSERTION` label is never accepted as an answer. A source whose\n`upstream_mtime` is older than 18 months is admitted with `liveness='stale'` and\nmay never win a contradiction against a live source.\n\n> **Implemented:** `tools/corpus/license_gate.py` (2026-08-30). Spec: `docs/specs/2026-08-30-corpus-license-gate.md`.\n\n**Stage 2, chunk.** Split on h2/h3 headings, subdivide above ~350 words, classify\n`kind`. Code fences become `kind='code'` and feed stage 6.\n\n**Stage 3, dedup, three passes matching the three classes measured in 2.1.**\nPass A: exact `norm_sha256` collision; the second occurrence gets\n`status='superseded'` plus a `duplicates` edge, never a delete. Pass B: simhash\nHamming distance under 4, blocked by simhash prefix so this stays linear rather\nthan the quadratic pair scan used to measure it tonight. Pass C: version\nfamilies, detected when two chunks are near-identical but their source filenames\ndiffer by a version or status token such as `DEPLOYED` or `v6.7`. Pass C creates\na `supersedes` edge and keeps BOTH, because the `maryam-v6.7-DEPLOYED` case\nproves that discarding one destroys the deployed-versus-draft fact.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q20-R0",
+   "question": "Which contradictions does the corpus audit tool treat as highest priority, and why does shared cluster membership matter?",
+   "doc_id": "2026-08-31-corpus-audit",
+   "chunk_id": "2026-08-31-corpus-audit#c002",
+   "text": "[Corpus Audit / Solution]\nA new tool `tools/corpus/corpus_audit.py` with six subcommands:\n\n- `contradictions [--db PATH] [--json]`: finds unresolved contradictions\n  where both chunks share a cluster label.  These are the highest\n  priority disputes because the clustering algorithm judged the chunks\n  topically related yet their claims conflict.\n- `citations [--db PATH] [--json]`: finds unverified citations on\n  accepted chunks.  These are claims the corpus treats as valid but\n  whose evidence has not been checked.\n- `weak-tags [--db PATH] [--threshold F] [--json]`: finds tags assigned\n  with confidence below threshold (default 0.5).  Low-confidence tags\n  may be noise from the auto-tagger.\n- `orphans [--db PATH] [--json]`: finds accepted chunks with no edges,\n  citations, tags, or topic assignment.  These chunks are invisible to\n  every analytical tool.\n- `stale-sources [--db PATH] [--threshold F] [--json]`: finds sources\n  where more than threshold fraction of chunks are superseded (default\n  0.5).  These sources may need re-ingestion or retirement.\n- `full [--db PATH] [--json]`: runs all five checks and combines results\n  into one report.\n- `selftest`: exercises 14 checks covering intra-cluster contradiction\n  detection, resolved-edge exclusion, cross-cluster exclusion, unverified\n  citation filtering, weak-tag thresholding, orphan detection, stale\n  source detection, full audit composition, JSON serialisation, and empty\n  corpus handling.\n\n### Design properties",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q20-R1",
+   "question": "Which contradictions does the corpus audit tool treat as highest priority, and why does shared cluster membership matter?",
+   "doc_id": "2026-08-31-corpus-audit",
+   "chunk_id": "2026-08-31-corpus-audit#c001",
+   "text": "[Corpus Audit / Problem]\nIndividual corpus tools report signals in isolation: the dashboard counts\norphans, the tag store shows scores, the claim network finds\ncontradictions.  No tool cross-referenced these signals to surface\nactionable issues, such as contradictions between chunks that a\nclustering algorithm placed in the same group, or sources where most\nchunks have been superseded.",
+   "label": "relevant",
+   "label_rule": "truth-doc chunk, top-10, substance section (Scope/Non-goals/See-also/header-only excluded)"
+  },
+  {
+   "id": "Q20-I0",
+   "question": "Which contradictions does the corpus audit tool treat as highest priority, and why does shared cluster membership matter?",
+   "doc_id": "2026-08-31-corpus-xray",
+   "chunk_id": "2026-08-31-corpus-xray#c002",
+   "text": "[Corpus Cross-Table Analysis / Solution]\nA new tool `tools/corpus/xray.py` with four subcommands:\n\n- `topic-clusters [--db PATH] [--topic N] [--json]`: shows which\n  clusters each topic spans.  Without `--topic`, lists all topics with\n  their cluster count and spread (clusters/chunks ratio).  With\n  `--topic`, drills into one topic showing per-cluster member counts\n  and cluster top terms.\n- `cluster-health [--db PATH] [--cluster N] [--json]`: measures\n  intra-cluster contradiction count and density, total edge count,\n  and average/min/max cosine similarity.  Sorted by contradiction\n  density descending to surface the most contested clusters first.\n- `hotspots [--db PATH] [--top N] [--json]`: ranks topics by\n  open-contradiction density (contradictions per chunk).  Shows the\n  top terms for each topic so the hotspot is immediately nameable.\n- `isolation [--db PATH] [--top N] [--json]`: finds chunks with low\n  maximum similarity and small topic membership.  Computes an\n  isolation score ((1 - max_similarity) / topic_size) to surface\n  chunks that are both semantically distant from all neighbours and\n  topically marginal.\n- `selftest`: exercises 14 checks.\n\n### Design properties",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q20-I1",
+   "question": "Which contradictions does the corpus audit tool treat as highest priority, and why does shared cluster membership matter?",
+   "doc_id": "2026-08-30-corpus-contradiction-detection",
+   "chunk_id": "2026-08-30-corpus-contradiction-detection#c002",
+   "text": "[Corpus Contradiction Detection / Solution]\nA new tool `tools/corpus/contradict.py` with three subcommands:\n\n- `detect [--db PATH]`: scans accepted chunks through three detectors,\n  writes `claim_edges` rows with `edge_type='contradicts'`, returns\n  counts per detector and new edges written.\n- `report [--db PATH]`: queries and displays open contradictions ordered\n  by confidence.\n- `selftest`: exercises 8 checks covering each detector's true and false\n  positive paths plus the persistence and idempotency invariants.\n\n### Three detectors, cheapest first\n\n1. **Numeric**: extracts metric patterns (`N units`, `label: N`) from\n   chunk text, groups by unit/label, and flags pairs from different\n   sources where the values differ by more than 50% and more than 1,\n   with a context overlap (Jaccard similarity of words around the metric)\n   of at least 0.25. This context requirement prevents matching \"26 rows\"\n   in a backlog document against \"0 rows\" in a security audit.\n\n2. **Negation**: pairs chunks by word overlap (Jaccard of non-negation\n   words >= 0.5) or simhash Hamming distance (<= threshold), then checks\n   whether the negation word density differs by at least 2 words. This\n   catches \"the results are reliable\" vs \"the results are not reliable\n   and never consistent\" when the surrounding text overlaps.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  },
+  {
+   "id": "Q20-I2",
+   "question": "Which contradictions does the corpus audit tool treat as highest priority, and why does shared cluster membership matter?",
+   "doc_id": "2026-08-31-corpus-xray",
+   "chunk_id": "2026-08-31-corpus-xray#c006",
+   "text": "[Corpus Cross-Table Analysis / See also]\n- [corpus-cluster-store](2026-08-30-corpus-cluster-store.md): persists\n  chunk_clusters data this tool reads.\n- [corpus-topic-model](2026-08-31-corpus-topic-model.md): persists\n  chunk_topics and topic_terms data this tool reads.\n- [corpus-similarity-store](2026-08-30-corpus-similarity-store.md):\n  persists chunk_similarities data this tool reads.\n- [corpus-contradiction-detection](2026-08-30-corpus-contradiction-detection.md):\n  populates claim_edges with contradiction edges this tool queries.\n- [corpus-citation-graph](2026-08-31-corpus-citation-graph.md): also\n  analyses claim_edges, but per-chunk rather than per-topic/cluster.\n- [corpus-recommend](2026-08-31-corpus-recommend.md): per-chunk\n  recommender fusing the same analytical signals this tool joins.",
+   "label": "irrelevant",
+   "label_rule": "non-truth chunk retrieved in top-10 (hard negative)"
+  }
+ ]
+}
