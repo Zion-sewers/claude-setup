@@ -504,7 +504,22 @@ def selftest(project: Path) -> int:
     check("a drifted map becomes a problem",
           any("not what the documents imply" in msg
               for msg in problems(dict(state, on_disk="hand edited"))), True)
-    check("a clean state produces no problems", problems(state), [])
+    # A clean state produces no problems. Built synthetically from the live docs by
+    # repairing every bad status in memory and marking the map fresh, so this asserts
+    # on problems()'s logic rather than on the working tree. Asserting the live tree
+    # here was the same defect the comment above records for rendered == on_disk: a
+    # selftest tests logic, `check` tests the tree, and the tree assertion broke the
+    # falsifiability baseline on 2026-10-10 (stale DOCMAP.md, 9 undeclared documents,
+    # 1 expired prior-art record), failing every PR's mutate step for the six weeks
+    # the tree had drifted.
+    repaired = [
+        dc_replace(d, status="active")
+        if d.status in ("UNDECLARED", "MALFORMED") or d.status.startswith("EXPIRED")
+        else d
+        for d in docs
+    ]
+    clean = dict(state, docs=repaired, on_disk=state["rendered"])
+    check("a clean state produces no problems", problems(clean), [])
 
     for f in fails:
         print("FAIL " + f)

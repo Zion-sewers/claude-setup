@@ -58,8 +58,10 @@ MUTATIONS = [
     ("the confirm string is never checked",
      "restores the state measured on 2026-08-07: the gate prints a waiver whose "
      "own confirmation step fails and returns VERDICT: PASS, which is a false "
-     "green produced by a check that was never run",
-     '        if waiver.get("confirm"):',
+     "green produced by a check that was never run. Pattern updated 2026-10-10: "
+     "the waiver branch grew a `command` falsifier mode, so the guard is now "
+     "`waiver.get(\"command\") or waiver.get(\"confirm\")`.",
+     '        if waiver.get("command") or waiver.get("confirm"):',
      '        if False:'),
 
     ("a stale waiver reports WAIVED instead of failing",
@@ -71,9 +73,10 @@ MUTATIONS = [
     ("a confirm string on a domain with no command passes silently",
      "a waiver naming a confirmation that can never run is indistinguishable "
      "from one that ran and held, so the cheapest way to defeat the check is to "
-     "delete the domain's cmd",
-     '        return FAIL, ("the waiver carries a confirm string and the domain names no command "',
-     '        return WAIVED, ("the waiver carries a confirm string and the domain names no command "'),
+     "delete the domain's cmd. Pattern updated 2026-10-10: the message now names "
+     "the confirm/command field.",
+     '        return FAIL, ("the waiver carries a confirm/command field and the domain names no "',
+     '        return WAIVED, ("the waiver carries a confirm/command field and the domain names no "'),
 
     ("the confirmation is satisfied by any output at all",
      "an unconditional match makes every waiver self-confirming, which is the "

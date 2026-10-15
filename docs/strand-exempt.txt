@@ -39,3 +39,43 @@
 # The middle step is not wasted motion: without the strand.py fix, a real link
 # and a generated artifact are indistinguishable, and these rows would churn on
 # every commit.
+
+# --- 2026-08-31 corpus profile batch, exempted 2026-10-10 ---
+# 27 point-in-time analytical profile specs from a single-day corpus-tooling binge
+# (tools/corpus/*_profile.py and siblings, PRs #197-#319). The tools are the deliverable;
+# the specs are evidence records of what each tool measured that day. No downstream
+# reader exists: no tool cites its spec, no skill enumerates the suite, and the sibling
+# "See also" links run outward only, so nothing outside docs/INDEX.md and the generated
+# docs/DOCMAP.md (both excluded as consumers by strand.py itself) names them. Kept as
+# evidence, not maintained, the same class as the 2026-08-05 imported research corpus
+# above. This had been 27 permanent violations since 2026-08-31, failing every PR's
+# gate job for six weeks; a gate that is always red teaches everyone to ignore it, so
+# the debt is recorded here, visibly, instead.
+
+docs/specs/2026-08-31-corpus-artifact-tag-profile.md | 2026-08-31 corpus batch: point-in-time tool profile, no reader
+docs/specs/2026-08-31-corpus-artifact-version-conflicts.md | 2026-08-31 corpus batch: point-in-time tool profile, no reader
+docs/specs/2026-08-31-corpus-chunk-connectivity-profile.md | 2026-08-31 corpus batch: point-in-time tool profile, no reader
+docs/specs/2026-08-31-corpus-chunk-similarity-clusters.md | 2026-08-31 corpus batch: point-in-time tool profile, no reader
+docs/specs/2026-08-31-corpus-citation-edge-profile.md | 2026-08-31 corpus batch: point-in-time tool profile, no reader
+docs/specs/2026-08-31-corpus-cross-kind-analysis.md | 2026-08-31 corpus batch: point-in-time tool profile, no reader
+docs/specs/2026-08-31-corpus-edge-confidence-profile.md | 2026-08-31 corpus batch: point-in-time tool profile, no reader
+docs/specs/2026-08-31-corpus-edge-reciprocity-analysis.md | 2026-08-31 corpus batch: point-in-time tool profile, no reader
+docs/specs/2026-08-31-corpus-edge-source-temporal-lag.md | 2026-08-31 corpus batch: point-in-time tool profile, no reader
+docs/specs/2026-08-31-corpus-edge-text-correlation.md | 2026-08-31 corpus batch: point-in-time tool profile, no reader
+docs/specs/2026-08-31-corpus-edge-type-transition.md | 2026-08-31 corpus batch: point-in-time tool profile, no reader
+docs/specs/2026-08-31-corpus-heading-citation-correlation.md | 2026-08-31 corpus batch: point-in-time tool profile, no reader
+docs/specs/2026-08-31-corpus-heading-simhash-profile.md | 2026-08-31 corpus batch: point-in-time tool profile, no reader
+docs/specs/2026-08-31-corpus-kind-edge-profile.md | 2026-08-31 corpus batch: point-in-time tool profile, no reader
+docs/specs/2026-08-31-corpus-language-distribution.md | 2026-08-31 corpus batch: point-in-time tool profile, no reader
+docs/specs/2026-08-31-corpus-publisher-license-profile.md | 2026-08-31 corpus batch: point-in-time tool profile, no reader
+docs/specs/2026-08-31-corpus-simhash-citation-profile.md | 2026-08-31 corpus batch: point-in-time tool profile, no reader
+docs/specs/2026-08-31-corpus-source-argumentation-balance.md | 2026-08-31 corpus batch: point-in-time tool profile, no reader
+docs/specs/2026-08-31-corpus-source-composite-profile.md | 2026-08-31 corpus batch: point-in-time tool profile, no reader
+docs/specs/2026-08-31-corpus-source-edge-stance.md | 2026-08-31 corpus batch: point-in-time tool profile, no reader
+docs/specs/2026-08-31-corpus-source-overlap-analysis.md | 2026-08-31 corpus batch: point-in-time tool profile, no reader
+docs/specs/2026-08-31-corpus-status-domain-profile.md | 2026-08-31 corpus batch: point-in-time tool profile, no reader
+docs/specs/2026-08-31-corpus-tag-domain-correlation.md | 2026-08-31 corpus batch: point-in-time tool profile, no reader
+docs/specs/2026-08-31-corpus-tag-verification-breakdown.md | 2026-08-31 corpus batch: point-in-time tool profile, no reader
+docs/specs/2026-08-31-corpus-version-claim-edge-cascade.md | 2026-08-31 corpus batch: point-in-time tool profile, no reader
+docs/specs/2026-08-31-corpus-version-domain-stability.md | 2026-08-31 corpus batch: point-in-time tool profile, no reader
+docs/specs/2026-08-31-corpus-version-fts-coverage.md | 2026-08-31 corpus batch: point-in-time tool profile, no reader
