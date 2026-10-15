@@ -1,0 +1,22 @@
+Two great questions, answering both at the level of principles.
+What to put in G-evals for decision-making policies
+Generic, for any decision policy:
+ * Consistency: Identical inputs yield identical decisions.
+ * Schema validity: Outputs consistently match the required schema.
+ * Grounding / non-hallucination: Never invents fields or attributes not present in the ingested data.
+ * Difficulty calibration: Flagging a case as "hard" genuinely correlates with higher error rates or annotator disagreement.
+ * Sound abstention: Hands off to human review or escalation rather than guessing.
+ * Robustness to phrasing: Paraphrasing the same input case does not flip the decision.
+Domain-level decision principles:
+ * Monotonicity: Higher risk or severity signals never lead to more lenient actions.
+ * Evidence grounding: Every negative or adverse decision explicitly cites concrete evidence present in the input data.
+ * Score–action alignment: No discrepancy between the assessed severity and the final remediation action taken.
+ * Edge cases: Boundary scenarios and compound anomalies do not collapse into a blind default action.
+ * Fairness: Unintended demographic proxies are never used as decision signals.
+ * Reconstructible rationale: The provided explanation allows an independent reviewer to reproduce the decision.
+Policy-specific: These belong to your specific implementation. The methodology derives directly from the policy graphs: for each deterministic rule in the policy graph, construct synthetic test cases tailored to trigger precisely that rule, measuring precision and recall on its execution. For every boundary in the decision space, construct test cases on both sides of the threshold to verify the decision flips at the exact transition point. Any modification in Graph 3 receives its own dedicated regression evaluation.
+Validation vs. Verification vs. Reflection
+Verification asks: "Did we build it right?" The prompt compared against the specification. Static, formal, and automatable: ensures every rule is represented, no mutually contradictory rules exist, the full decision space is partitioned, and there are no dead execution branches. Does not require ground-truth data.
+Validation asks: "Did we build the right thing?" The prompt compared against empirical reality. Empirical: evaluates whether decisions on labeled ground-truth cases are accurate, whether human experts concur, and whether target metrics trend as expected. Requires ground truth.
+Reflection asks: "Am I reasoning soundly right now?" The agent assessing itself during runtime. Internal meta-cognition: recognizing ambiguity where the prompt cannot adjudicate cleanly, checking self-consistency between raw data interpretation and active rules, and deciding when to abstain or escalate. This is an intrinsic real-time mechanism, not an external offline benchmark.
+In your terms: Verification confirms Graphs 1 and 2 are faithfully translated into the prompt. Validation confirms Graph 3 achieves its intended real-world utility. Reflection executes continuously within each discrete decision cycle. The difficulty dimension you constructed serves as the operational bridge between all three: Verification proves it is formally well-defined, Validation confirms it is predictive of real error, and Reflection relies on it dynamically to know when to escalate.
